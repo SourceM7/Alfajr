@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User preferences may be backed up. Device-local alarm state must never restore enabled. -->
+<full-backup-content>
+    <exclude domain="file" path="datastore/alarm_state.preferences_pb" />
+</full-backup-content>

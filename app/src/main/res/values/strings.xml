@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Alfajr Alarm</string>
+    <string name="bootstrap_title">Alfajr Alarm</string>
+    <string name="bootstrap_message">Your offline Fajr alarm is ready for setup.</string>
+</resources>

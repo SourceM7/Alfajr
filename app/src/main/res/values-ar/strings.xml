@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">منبّه الفجر</string>
+    <string name="bootstrap_title">منبّه الفجر</string>
+    <string name="bootstrap_message">منبّه الفجر دون اتصال جاهز للإعداد.</string>
+</resources>
