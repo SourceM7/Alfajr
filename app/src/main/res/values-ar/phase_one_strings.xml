@@ -1,0 +1,50 @@
+<resources>
+    <string name="phase_one_title">معاينة الفجر</string>
+    <string name="phase_one_description">اختر مدينة دون اتصال، وأكّد طريقة الحساب، ثم قارن الفجر الخام والفجر المصحح ووقت المنبه النهائي.</string>
+    <string name="city_search_label">ابحث عن مدينة</string>
+    <string name="selected_location">الموقع المختار</string>
+    <string name="no_location_selected">لم يُختر موقع</string>
+    <string name="calculation_method">طريقة الحساب</string>
+    <plurals name="prayer_correction">
+        <item quantity="zero">تصحيح وقت الصلاة: 0 دقيقة</item>
+        <item quantity="one">تصحيح وقت الصلاة: دقيقة واحدة</item>
+        <item quantity="two">تصحيح وقت الصلاة: دقيقتان</item>
+        <item quantity="few">تصحيح وقت الصلاة: %1$d دقائق</item>
+        <item quantity="many">تصحيح وقت الصلاة: %1$d دقيقة</item>
+        <item quantity="other">تصحيح وقت الصلاة: %1$d دقائق</item>
+    </plurals>
+    <plurals name="wake_offset">
+        <item quantity="zero">إزاحة التنبيه: 0 دقيقة</item>
+        <item quantity="one">إزاحة التنبيه: دقيقة واحدة</item>
+        <item quantity="two">إزاحة التنبيه: دقيقتان</item>
+        <item quantity="few">إزاحة التنبيه: %1$d دقائق</item>
+        <item quantity="many">إزاحة التنبيه: %1$d دقيقة</item>
+        <item quantity="other">إزاحة التنبيه: %1$d دقائق</item>
+    </plurals>
+    <string name="fajr_preview">اليوم وغدًا</string>
+    <string name="preview_requires_setup">اختر موقعًا وطريقة حساب لعرض المعاينة.</string>
+    <string name="high_latitude_notice">تطبيق ضبط زوايا الشفق لخطوط العرض العليا نشط.</string>
+    <string name="manual_location">موقع يدوي</string>
+    <string name="latitude">خط العرض</string>
+    <string name="longitude">خط الطول</string>
+    <string name="time_zone">منطقة زمنية IANA (مثل Asia/Damascus)</string>
+    <string name="save_manual_location">استخدم الموقع اليدوي</string>
+    <string name="selected_method">✓ %1$s</string>
+    <string name="preview_row">%1$s: الخام %2$s · المصحح %3$s · المنبه %4$s</string>
+    <string name="suggested_method">الطريقة المقترحة: %1$s. اختر طريقة لتأكيدها.</string>
+    <string name="method_muslim_world_league">رابطة العالم الإسلامي</string>
+    <string name="method_egyptian">الهيئة المصرية العامة للمساحة</string>
+    <string name="method_karachi">كراتشي</string>
+    <string name="method_umm_al_qura">أم القرى</string>
+    <string name="method_dubai">دبي</string>
+    <string name="method_qatar">قطر</string>
+    <string name="method_kuwait">الكويت</string>
+    <string name="method_moon_sighting_committee">لجنة رؤية الهلال</string>
+    <string name="method_singapore">سنغافورة</string>
+    <string name="method_turkey">تركيا</string>
+    <string name="error_location_required">اختر مدينة أو أدخل الإحداثيات.</string>
+    <string name="error_method_required">أكّد طريقة الحساب.</string>
+    <string name="error_invalid_latitude">يجب أن يكون خط العرض بين -90 و90.</string>
+    <string name="error_invalid_longitude">يجب أن يكون خط الطول بين -180 و180.</string>
+    <string name="error_invalid_time_zone">اختر منطقة زمنية صالحة من IANA.</string>
+</resources>

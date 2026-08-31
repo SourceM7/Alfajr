@@ -1,0 +1,42 @@
+<resources>
+    <string name="phase_one_title">Fajr preview</string>
+    <string name="phase_one_description">Choose a bundled offline city, confirm the calculation method, and compare the raw Fajr, corrected Fajr, and final alarm time.</string>
+    <string name="city_search_label">Search city</string>
+    <string name="selected_location">Selected location</string>
+    <string name="no_location_selected">No location selected</string>
+    <string name="calculation_method">Calculation method</string>
+    <plurals name="prayer_correction">
+        <item quantity="one">Prayer-time correction: %1$d minute</item>
+        <item quantity="other">Prayer-time correction: %1$d minutes</item>
+    </plurals>
+    <plurals name="wake_offset">
+        <item quantity="one">Wake-up offset: %1$d minute</item>
+        <item quantity="other">Wake-up offset: %1$d minutes</item>
+    </plurals>
+    <string name="fajr_preview">Today and tomorrow</string>
+    <string name="preview_requires_setup">Choose a location and calculation method to show a preview.</string>
+    <string name="high_latitude_notice">Twilight Angle high-latitude adjustment is active.</string>
+    <string name="manual_location">Manual location</string>
+    <string name="latitude">Latitude</string>
+    <string name="longitude">Longitude</string>
+    <string name="time_zone">IANA time zone (for example, Asia/Damascus)</string>
+    <string name="save_manual_location">Use manual location</string>
+    <string name="selected_method">✓ %1$s</string>
+    <string name="preview_row">%1$s: raw %2$s · corrected %3$s · alarm %4$s</string>
+    <string name="suggested_method">Suggested method: %1$s. Select a method to confirm it.</string>
+    <string name="method_muslim_world_league">Muslim World League</string>
+    <string name="method_egyptian">Egyptian</string>
+    <string name="method_karachi">Karachi</string>
+    <string name="method_umm_al_qura">Umm al-Qura</string>
+    <string name="method_dubai">Dubai</string>
+    <string name="method_qatar">Qatar</string>
+    <string name="method_kuwait">Kuwait</string>
+    <string name="method_moon_sighting_committee">Moonsighting Committee</string>
+    <string name="method_singapore">Singapore</string>
+    <string name="method_turkey">Turkey</string>
+    <string name="error_location_required">Choose a city or enter coordinates.</string>
+    <string name="error_method_required">Confirm a calculation method.</string>
+    <string name="error_invalid_latitude">Latitude must be between -90 and 90.</string>
+    <string name="error_invalid_longitude">Longitude must be between -180 and 180.</string>
+    <string name="error_invalid_time_zone">Choose a valid IANA time zone.</string>
+</resources>
