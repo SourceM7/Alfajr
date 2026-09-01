@@ -1,0 +1,63 @@
+<resources>
+    <string name="channel_alarm_name">Fajr alarm</string>
+    <string name="channel_alarm_description">The ringing Fajr alarm, including its full-screen alarm screen.</string>
+    <string name="channel_status_name">Alarm status</string>
+    <string name="channel_status_description">Missed alarms and settings that need your attention.</string>
+
+    <string name="phase_two_title">Alarm scheduling</string>
+    <string name="phase_two_description">Temporary diagnostics for the exact daily alarm. It shows what is stored, what Android reports, and what was scheduled last.</string>
+    <string name="daily_alarm_switch">Daily Fajr alarm</string>
+    <string name="refresh_state">Recheck and reschedule</string>
+
+    <string name="next_alarm_none">No alarm is scheduled.</string>
+    <string name="next_alarm_row">Next alarm: %1$s at %2$s (%3$s)</string>
+    <string name="next_alarm_device_zone">Device time zone shows %1$s (%2$s). The selected location stays authoritative.</string>
+    <string name="prayer_date_row">Fajr date: %1$s</string>
+
+    <string name="skip_next_alarm">Skip next alarm</string>
+    <string name="undo_skip">Undo skip</string>
+    <string name="skipped_date">Skipped Fajr date: %1$s</string>
+    <string name="run_test_alarm">Run ten-second test alarm</string>
+
+    <string name="last_outcome">Most recent outcome: %1$s</string>
+    <string name="last_outcome_none">No recorded outcome yet.</string>
+    <string name="outcome_dismissed">Dismissed</string>
+    <string name="outcome_snoozed">Snoozed</string>
+    <string name="outcome_missed">Missed</string>
+    <string name="outcome_skipped">Skipped</string>
+    <string name="last_delivery">Last alarm delivery: %1$s</string>
+    <string name="last_delivery_none">No alarm has been delivered yet.</string>
+    <string name="snooze_count_row">Snoozes used: %1$d of %2$d</string>
+    <string name="session_row">Ringing session: %1$s</string>
+    <string name="no_session">none</string>
+
+    <string name="health_healthy">Android reports every required alarm capability as available.</string>
+    <string name="health_problems">Action required</string>
+    <string name="health_warnings">Warnings</string>
+    <string name="problem_configuration_incomplete">Choose a location and confirm a calculation method.</string>
+    <string name="problem_exact_alarms_unavailable">Android is not allowing exact alarms for this app.</string>
+    <string name="problem_notifications_disabled">Alarm notifications are turned off.</string>
+    <string name="problem_full_screen_unavailable">The full-screen alarm permission is unavailable.</string>
+    <string name="problem_scheduling_failed">Android rejected the alarm. The daily alarm was switched off; your settings are unchanged.</string>
+    <string name="warning_alarm_volume_muted">The alarm volume is muted. The app never changes it for you.</string>
+    <string name="warning_alarm_volume_low">The alarm volume is very low.</string>
+    <string name="warning_time_zone_mismatch">The selected location uses a different time zone from this device.</string>
+
+    <string name="action_grant_notifications">Allow notifications</string>
+    <string name="action_notification_settings">Open notification settings</string>
+    <string name="action_exact_alarm_settings">Open alarms and reminders settings</string>
+    <string name="action_full_screen_settings">Open full-screen alarm settings</string>
+
+    <string name="result_scheduled">Scheduled for %1$s</string>
+    <string name="result_temporary_scheduled">%1$s alarm scheduled for %2$s</string>
+    <string name="result_disabled">Not scheduled: %1$s</string>
+    <string name="result_action_required">Not scheduled: %1$s</string>
+    <string name="result_invalid_configuration">Not scheduled: %1$s</string>
+    <string name="kind_daily">Daily</string>
+    <string name="kind_snooze">Snooze</string>
+    <string name="kind_test">Test</string>
+    <string name="disabled_not_enabled">the daily alarm is off.</string>
+    <string name="disabled_user_disabled">you turned the daily alarm off.</string>
+    <string name="disabled_stale_session">that alarm session is no longer active.</string>
+    <string name="disabled_snooze_limit">the three-snooze limit was reached.</string>
+</resources>

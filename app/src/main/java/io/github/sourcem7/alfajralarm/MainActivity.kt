@@ -35,7 +35,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import io.github.sourcem7.alfajralarm.calculation.AdhanFajrCalculator
 import io.github.sourcem7.alfajralarm.calculation.MethodSuggestions
-import io.github.sourcem7.alfajralarm.data.location.OfflineCityRepository
+import io.github.sourcem7.alfajralarm.app.AppGraph
 import io.github.sourcem7.alfajralarm.data.location.ManualLocation
 import io.github.sourcem7.alfajralarm.data.location.ManualLocationResult
 import io.github.sourcem7.alfajralarm.data.settings.AlarmPreferencesRepository
@@ -44,6 +44,8 @@ import io.github.sourcem7.alfajralarm.domain.FajrMethod
 import io.github.sourcem7.alfajralarm.domain.FajrOccurrence
 import io.github.sourcem7.alfajralarm.domain.FixedLocation
 import io.github.sourcem7.alfajralarm.domain.PreferenceError
+import io.github.sourcem7.alfajralarm.domain.ScheduleReason
+import io.github.sourcem7.alfajralarm.ui.SchedulingDiagnostics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -52,26 +54,32 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
+    private val graph: AppGraph by lazy { AppGraph.from(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val settings = AlarmPreferencesRepository(applicationContext)
-        val cities = OfflineCityRepository(applicationContext)
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    PhaseOneTracer(settings, cities, AdhanFajrCalculator())
+                    AlarmTracer(graph)
                 }
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Force-stop and OEM power management can drop scheduled alarms, so the
+        // next occurrence is reconciled on every launch and resume.
+        graph.scope.launch { graph.scheduler.scheduleNext(ScheduleReason.AppOpened) }
+    }
 }
 
 @Composable
-private fun PhaseOneTracer(
-    settings: AlarmPreferencesRepository,
-    cities: OfflineCityRepository,
-    calculator: AdhanFajrCalculator,
-) {
+private fun AlarmTracer(graph: AppGraph) {
+    val settings: AlarmPreferencesRepository = graph.preferencesRepository
+    val cities = graph.cityRepository
+    val calculator: AdhanFajrCalculator = graph.calculator
     val preferences by produceState(initialValue = AlarmPreferences(), settings) {
         settings.preferences.collect { value = it }
     }
@@ -82,6 +90,8 @@ private fun PhaseOneTracer(
     var manualZoneId by remember { mutableStateOf("") }
     var manualError by remember { mutableStateOf<PreferenceError?>(null) }
     val scope = rememberCoroutineScope()
+    // A settings change must replace the registered alarm rather than add one.
+    LaunchedEffect(preferences) { graph.scheduler.scheduleNext(ScheduleReason.SettingsChanged) }
     LaunchedEffect(query) {
         delay(200)
         results = cities.search(query = query)
@@ -150,6 +160,7 @@ private fun PhaseOneTracer(
             )
         }
         item { PreviewCard(preferences, calculator) }
+        item { SchedulingDiagnostics(graph, preferences) }
     }
 }
 

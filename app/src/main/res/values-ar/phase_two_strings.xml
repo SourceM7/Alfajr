@@ -1,0 +1,63 @@
+<resources>
+    <string name="channel_alarm_name">منبّه الفجر</string>
+    <string name="channel_alarm_description">منبّه الفجر أثناء الرنين، بما في ذلك شاشة المنبه بملء الشاشة.</string>
+    <string name="channel_status_name">حالة المنبه</string>
+    <string name="channel_status_description">المنبّهات الفائتة والإعدادات التي تحتاج إلى انتباهك.</string>
+
+    <string name="phase_two_title">جدولة المنبه</string>
+    <string name="phase_two_description">تشخيص مؤقت للمنبه اليومي الدقيق. يعرض ما هو مخزَّن، وما يبلّغ عنه أندرويد، وآخر عملية جدولة.</string>
+    <string name="daily_alarm_switch">منبّه الفجر اليومي</string>
+    <string name="refresh_state">إعادة الفحص وإعادة الجدولة</string>
+
+    <string name="next_alarm_none">لا يوجد منبّه مجدول.</string>
+    <string name="next_alarm_row">المنبه القادم: %1$s الساعة %2$s (%3$s)</string>
+    <string name="next_alarm_device_zone">المنطقة الزمنية للجهاز تعرض %1$s (%2$s). يبقى الموقع المختار هو المرجع.</string>
+    <string name="prayer_date_row">تاريخ الفجر: %1$s</string>
+
+    <string name="skip_next_alarm">تخطَّ المنبه القادم</string>
+    <string name="undo_skip">تراجع عن التخطي</string>
+    <string name="skipped_date">تاريخ الفجر المتخطى: %1$s</string>
+    <string name="run_test_alarm">شغّل منبّه اختبار بعد عشر ثوانٍ</string>
+
+    <string name="last_outcome">آخر نتيجة: %1$s</string>
+    <string name="last_outcome_none">لا توجد نتيجة مسجلة بعد.</string>
+    <string name="outcome_dismissed">أُوقف</string>
+    <string name="outcome_snoozed">أُجّل</string>
+    <string name="outcome_missed">فات</string>
+    <string name="outcome_skipped">تُخطي</string>
+    <string name="last_delivery">آخر تسليم للمنبه: %1$s</string>
+    <string name="last_delivery_none">لم يُسلَّم أي منبّه بعد.</string>
+    <string name="snooze_count_row">مرات التأجيل: %1$d من %2$d</string>
+    <string name="session_row">جلسة الرنين: %1$s</string>
+    <string name="no_session">لا شيء</string>
+
+    <string name="health_healthy">يبلّغ أندرويد أن جميع قدرات المنبه المطلوبة متاحة.</string>
+    <string name="health_problems">مطلوب إجراء</string>
+    <string name="health_warnings">تنبيهات</string>
+    <string name="problem_configuration_incomplete">اختر موقعًا وأكّد طريقة الحساب.</string>
+    <string name="problem_exact_alarms_unavailable">لا يسمح أندرويد بالمنبّهات الدقيقة لهذا التطبيق.</string>
+    <string name="problem_notifications_disabled">إشعارات المنبه معطّلة.</string>
+    <string name="problem_full_screen_unavailable">إذن المنبه بملء الشاشة غير متاح.</string>
+    <string name="problem_scheduling_failed">رفض أندرويد المنبه. أُوقف المنبه اليومي وبقيت إعداداتك كما هي.</string>
+    <string name="warning_alarm_volume_muted">صوت المنبه مكتوم. لا يغيّره التطبيق نيابة عنك.</string>
+    <string name="warning_alarm_volume_low">مستوى صوت المنبه منخفض جدًا.</string>
+    <string name="warning_time_zone_mismatch">يستخدم الموقع المختار منطقة زمنية مختلفة عن هذا الجهاز.</string>
+
+    <string name="action_grant_notifications">السماح بالإشعارات</string>
+    <string name="action_notification_settings">افتح إعدادات الإشعارات</string>
+    <string name="action_exact_alarm_settings">افتح إعدادات المنبّهات والتذكيرات</string>
+    <string name="action_full_screen_settings">افتح إعدادات المنبه بملء الشاشة</string>
+
+    <string name="result_scheduled">مجدول في %1$s</string>
+    <string name="result_temporary_scheduled">منبّه %1$s مجدول في %2$s</string>
+    <string name="result_disabled">لم يُجدول: %1$s</string>
+    <string name="result_action_required">لم يُجدول: %1$s</string>
+    <string name="result_invalid_configuration">لم يُجدول: %1$s</string>
+    <string name="kind_daily">يومي</string>
+    <string name="kind_snooze">تأجيل</string>
+    <string name="kind_test">اختبار</string>
+    <string name="disabled_not_enabled">المنبه اليومي متوقف.</string>
+    <string name="disabled_user_disabled">أوقفت المنبه اليومي.</string>
+    <string name="disabled_stale_session">لم تعد جلسة المنبه هذه نشطة.</string>
+    <string name="disabled_snooze_limit">تم بلوغ حد التأجيلات الثلاث.</string>
+</resources>
