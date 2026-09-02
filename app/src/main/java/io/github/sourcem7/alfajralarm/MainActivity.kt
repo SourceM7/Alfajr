@@ -45,6 +45,7 @@ import io.github.sourcem7.alfajralarm.domain.FajrOccurrence
 import io.github.sourcem7.alfajralarm.domain.FixedLocation
 import io.github.sourcem7.alfajralarm.domain.PreferenceError
 import io.github.sourcem7.alfajralarm.domain.ScheduleReason
+import io.github.sourcem7.alfajralarm.ui.RingingDiagnostics
 import io.github.sourcem7.alfajralarm.ui.SchedulingDiagnostics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -161,6 +162,7 @@ private fun AlarmTracer(graph: AppGraph) {
         }
         item { PreviewCard(preferences, calculator) }
         item { SchedulingDiagnostics(graph, preferences) }
+        item { RingingDiagnostics(graph, preferences) }
     }
 }
 

@@ -3,8 +3,7 @@ package io.github.sourcem7.alfajralarm.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
-import io.github.sourcem7.alfajralarm.BuildConfig
+import androidx.core.content.ContextCompat
 import io.github.sourcem7.alfajralarm.app.AppGraph
 import io.github.sourcem7.alfajralarm.domain.AlarmDelivery
 import io.github.sourcem7.alfajralarm.domain.AlarmRequest
@@ -14,7 +13,7 @@ import kotlinx.datetime.LocalDate
 /**
  * Receives daily, snooze, and test alarms. The receiver only validates the
  * intent and hands it to the serialized coordinator, which rejects stale or
- * duplicated deliveries.
+ * duplicated deliveries; a delivery the coordinator accepts starts ringing.
  */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -31,18 +30,17 @@ class AlarmReceiver : BroadcastReceiver() {
         graph.scope.launch {
             try {
                 val delivery = graph.scheduler.onAlarmDelivered(request)
-                // Phase 3 starts the ringing foreground service here. Until then
-                // the delivery is recorded so the tracer can prove it arrived.
-                if (BuildConfig.DEBUG && delivery is AlarmDelivery.Ring) {
-                    Log.i(TAG, "Delivered ${delivery.kind} (test=${delivery.isTest})")
-                }
+                if (delivery !is AlarmDelivery.Ring) return@launch
+                // The coordinator has already secured the following daily alarm,
+                // so ringing can start. Delivering an exact alarm is what allows
+                // this foreground service to start from the background.
+                ContextCompat.startForegroundService(
+                    context,
+                    AlarmRingingService.startIntent(context, delivery, request.triggerAtMillis),
+                )
             } finally {
                 pending.finish()
             }
         }
-    }
-
-    private companion object {
-        const val TAG = "AlfajrAlarm"
     }
 }

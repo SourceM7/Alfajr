@@ -21,7 +21,9 @@ import io.github.sourcem7.alfajralarm.domain.PreferencesProvider
 import io.github.sourcem7.alfajralarm.domain.ScheduleReason
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
 import io.github.sourcem7.alfajralarm.domain.SessionIdFactory
+import io.github.sourcem7.alfajralarm.domain.SessionKind
 import io.github.sourcem7.alfajralarm.domain.evaluateAlarmHealth
+import io.github.sourcem7.alfajralarm.domain.sessionKind
 import io.github.sourcem7.alfajralarm.domain.validateForPreview
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -313,14 +315,4 @@ class AlarmSchedulingCoordinator(
     companion object {
         val TEST_ALARM_DELAY: Duration = 10.seconds
     }
-}
-
-/** Which of the two possible ringing sessions an incoming session ID names. */
-private enum class SessionKind { RINGING, TEST }
-
-/** Null for a session the app no longer owns, so stale commands are ignored. */
-private fun AlarmState.sessionKind(sessionId: String): SessionKind? = when (sessionId) {
-    ringingSessionId -> SessionKind.RINGING
-    testSessionId -> SessionKind.TEST
-    else -> null
 }

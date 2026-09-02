@@ -1,0 +1,159 @@
+package io.github.sourcem7.alfajralarm.alarm
+
+import io.github.sourcem7.alfajralarm.domain.AlarmAudio
+import io.github.sourcem7.alfajralarm.domain.AlarmOutcome
+import io.github.sourcem7.alfajralarm.domain.AlarmScheduler
+import io.github.sourcem7.alfajralarm.domain.AlarmStateStore
+import io.github.sourcem7.alfajralarm.domain.AlarmVibration
+import io.github.sourcem7.alfajralarm.domain.MissedAlarmNotifier
+import io.github.sourcem7.alfajralarm.domain.PreferencesProvider
+import io.github.sourcem7.alfajralarm.domain.RINGING_TIMEOUT
+import io.github.sourcem7.alfajralarm.domain.RingingCommand
+import io.github.sourcem7.alfajralarm.domain.RingingSession
+import io.github.sourcem7.alfajralarm.domain.RingingWakeLock
+import io.github.sourcem7.alfajralarm.domain.RingtoneSource
+import io.github.sourcem7.alfajralarm.domain.ScheduleResult
+import io.github.sourcem7.alfajralarm.domain.SessionKind
+import io.github.sourcem7.alfajralarm.domain.VolumeRamp
+import io.github.sourcem7.alfajralarm.domain.sessionKind
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration
+import kotlin.time.Instant
+
+/**
+ * Owns one ringing alarm at a time. The foreground service supplies the Android
+ * output devices and the timer; every decision about what rings, for how long,
+ * and what it records lives here so it can be tested without a device.
+ *
+ * There is exactly one instance per process, which is what makes a recreated
+ * activity or a redelivered start command observe the running session rather
+ * than begin a second one.
+ */
+class RingingController(
+    private val scheduler: AlarmScheduler,
+    private val stateStore: AlarmStateStore,
+    private val preferences: PreferencesProvider,
+    private val audio: AlarmAudio,
+    private val vibration: AlarmVibration,
+    private val wakeLock: RingingWakeLock,
+    private val missedNotifier: MissedAlarmNotifier,
+    private val clock: () -> Instant = { Instant.fromEpochMilliseconds(System.currentTimeMillis()) },
+) {
+    private val mutex = Mutex()
+    private val current = MutableStateFlow<RingingSession?>(null)
+
+    /** The running session, or null when nothing is ringing. */
+    val session: StateFlow<RingingSession?> = current.asStateFlow()
+
+    /**
+     * Begins ringing for [sessionId], or returns the already-running session
+     * when it is the same one. Returns null for a session the application no
+     * longer owns, which is how a stale or duplicated delivery is dropped.
+     */
+    suspend fun start(sessionId: String, isTest: Boolean, alarmAt: Instant): RingingSession? = mutex.withLock {
+        current.value?.let { running ->
+            // A recreated activity, a redelivered broadcast, or a second start
+            // command must never open a second player.
+            return@withLock running.takeIf { it.sessionId == sessionId }
+        }
+        val state = stateStore.current()
+        val kind = state.sessionKind(sessionId) ?: return@withLock null
+        // The claimed kind has to match the stored one, so a test intent cannot
+        // borrow the daily session or the reverse.
+        if ((kind == SessionKind.TEST) != isTest) return@withLock null
+
+        val loaded = preferences.load()
+        wakeLock.acquire()
+        val source = RingtoneSource.chainFor(loaded.ringtoneUri)
+            .firstOrNull { candidate -> audio.start(candidate, loaded.ringtoneUri) }
+        audio.setVolume(VolumeRamp.scalarAt(Duration.ZERO))
+        if (loaded.vibrationEnabled) vibration.start()
+
+        val started = RingingSession(
+            sessionId = sessionId,
+            isTest = isTest,
+            alarmAt = alarmAt,
+            startedAt = clock(),
+            snoozesUsed = if (kind == SessionKind.TEST) state.testSnoozeCount else state.snoozeCount,
+            snoozeMinutes = loaded.snoozeMinutes,
+            tapToDismiss = loaded.tapToDismiss,
+            vibrating = loaded.vibrationEnabled,
+            ringtoneSource = source,
+        )
+        current.value = started
+        started
+    }
+
+    /**
+     * Advances the volume ramp and enforces the ten-minute timeout. The service
+     * calls this on a timer; nothing here depends on how often it runs.
+     */
+    suspend fun tick(now: Instant = clock()) {
+        val running = current.value ?: return
+        if (now - running.startedAt >= RINGING_TIMEOUT) {
+            handle(running.sessionId, RingingCommand.TIMEOUT)
+            return
+        }
+        val scalar = VolumeRamp.scalarAt(now - running.startedAt)
+        if (scalar == running.volumeScalar) return
+        audio.setVolume(scalar)
+        current.update { session ->
+            if (session?.sessionId == running.sessionId) session.copy(volumeScalar = scalar) else session
+        }
+    }
+
+    /** Applies a command, ignoring any that names a session that is not ringing. */
+    suspend fun handle(sessionId: String, command: RingingCommand) = mutex.withLock {
+        val running = current.value ?: return@withLock
+        if (running.sessionId != sessionId) return@withLock
+        when (command) {
+            RingingCommand.SNOOZE -> snooze(running)
+            RingingCommand.DISMISS -> finish(running, AlarmOutcome.DISMISSED)
+            RingingCommand.TIMEOUT -> finish(running, AlarmOutcome.MISSED)
+        }
+    }
+
+    /**
+     * Releases the output devices without recording an outcome, for the case
+     * where Android tears the service down on its own. Nothing rang to a
+     * conclusion, so nothing is claimed about how the alarm ended. A session ID
+     * that is not the running one is ignored, so a service instance shutting
+     * down can never silence the alarm that replaced it.
+     */
+    suspend fun abandon(sessionId: String) = mutex.withLock {
+        if (current.value?.sessionId != sessionId) return@withLock
+        releaseOutputs()
+        current.value = null
+    }
+
+    private suspend fun snooze(running: RingingSession) {
+        if (!running.snoozeAvailable) return
+        // The coordinator owns the count and the limit; a refusal there leaves
+        // the alarm ringing rather than silently ending it.
+        val result = scheduler.scheduleSnooze(running.sessionId, running.snoozeMinutes)
+        if (result !is ScheduleResult.TemporaryScheduled) return
+        releaseOutputs()
+        current.value = null
+    }
+
+    private suspend fun finish(running: RingingSession, outcome: AlarmOutcome) {
+        scheduler.recordOutcome(running.sessionId, outcome)
+        releaseOutputs()
+        // Clearing the session first is what makes a second timeout tick, or a
+        // duplicated notification action, a no-op.
+        current.value = null
+        // A test alarm never claims the daily Fajr alarm was missed.
+        if (outcome == AlarmOutcome.MISSED && !running.isTest) missedNotifier.postMissed(running)
+    }
+
+    private fun releaseOutputs() {
+        audio.stop()
+        vibration.stop()
+        wakeLock.release()
+    }
+}

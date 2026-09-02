@@ -54,6 +54,20 @@ class AlarmPreferencesRepository(private val context: Context) {
     suspend fun updateCorrection(minutes: Int) = context.userPreferencesDataStore.edit { it[CORRECTION] = minutes.coerceIn(-30, 30) }
     suspend fun updateWakeOffset(minutes: Int) = context.userPreferencesDataStore.edit { it[WAKE_OFFSET] = minutes.coerceIn(-60, 30) }
 
+    /** Null restores the device's own alarm sound as the first candidate. */
+    suspend fun updateRingtone(uri: String?) = context.userPreferencesDataStore.edit {
+        if (uri.isNullOrBlank()) it.remove(RINGTONE) else it[RINGTONE] = uri
+    }
+
+    suspend fun updateVibration(enabled: Boolean) = context.userPreferencesDataStore.edit { it[VIBRATION] = enabled }
+
+    /** The product specification offers five or ten minutes and nothing else. */
+    suspend fun updateSnoozeMinutes(minutes: Int) = context.userPreferencesDataStore.edit {
+        it[SNOOZE] = if (minutes >= 10) 10 else 5
+    }
+
+    suspend fun updateTapToDismiss(enabled: Boolean) = context.userPreferencesDataStore.edit { it[TAP_TO_DISMISS] = enabled }
+
     private companion object {
         val LOCATION_ID = stringPreferencesKey("location_id")
         val LOCATION_NAME = stringPreferencesKey("location_name")

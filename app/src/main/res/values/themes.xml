@@ -5,4 +5,14 @@
         <item name="android:statusBarColor">@color/black</item>
         <item name="android:navigationBarColor">@color/black</item>
     </style>
+
+    <!-- The ringing screen is deliberately near-black in every system theme and
+         must not flash a light background before Compose draws. -->
+    <style name="Theme.Alfajr.Ringing" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ringing_background</item>
+        <item name="android:statusBarColor">@color/ringing_background</item>
+        <item name="android:navigationBarColor">@color/ringing_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
 </resources>

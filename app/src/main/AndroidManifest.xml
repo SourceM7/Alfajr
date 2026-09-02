@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".app.AlfajrApplication"
@@ -32,6 +36,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The full-screen alarm. Android starts it from the ringing
+             notification's full-screen intent; nothing else may launch it. -->
+        <activity
+            android:name=".ui.AlarmRingingActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity=".ringing"
+            android:theme="@style/Theme.Alfajr.Ringing"
+            android:turnScreenOn="true"
+            tools:targetApi="o_mr1" />
+
+        <!-- Owns playback, vibration, the wake lock, and the ringing
+             notification for as long as an alarm is ringing. -->
+        <service
+            android:name=".alarm.AlarmRingingService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- Daily, snooze, and test alarms. Only this application can send
              these explicit intents. -->

@@ -30,6 +30,20 @@ from the GeoNames geographical database.
 Attribution is a condition of the license, so it must remain in this file, in
 the asset's own `attribution` metadata, and in the application's licenses screen.
 
+### Bundled fallback tone
+
+`app/src/main/res/raw/fallback_alarm.wav` is not third-party work. It is a
+generated tone, original to this project and covered by the project's own MIT
+license, and it exists so an alarm can still sound when the saved ringtone is
+unreadable and the device has no default alarm sound.
+
+- Content: two 880 Hz sine beeps of 180 ms separated by 120 ms, with 12 ms
+  fades, in 1.5 s of 16-bit mono PCM at 16 kHz, played on a loop
+- SHA-256: `f9937115adda9848acc08da57a3d6fb8de5375c6ecf1115ec24b7310f2cab059`
+
+No recorded adhan is bundled, and none will be; that is out of scope by product
+decision.
+
 ## Dependencies
 
 | Component | License |
