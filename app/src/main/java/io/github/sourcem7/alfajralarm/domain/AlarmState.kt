@@ -15,6 +15,8 @@ data class AlarmState(
     val ringingSessionId: String? = null,
     val snoozeCount: Int = 0,
     val testSessionId: String? = null,
+    /** Counted separately so a test alarm never consumes daily snoozes. */
+    val testSnoozeCount: Int = 0,
     val lastOutcome: AlarmOutcome? = null,
     val lastOutcomeEpochMillis: Long? = null,
     val lastDeliveryEpochMillis: Long? = null,

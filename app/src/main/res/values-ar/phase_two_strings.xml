@@ -49,6 +49,7 @@
     <string name="action_full_screen_settings">افتح إعدادات المنبه بملء الشاشة</string>
 
     <string name="result_scheduled">مجدول في %1$s</string>
+    <string name="result_scheduled_degraded">مجدول في %1$s، لكن بحالة منقوصة: %2$s. سيصدر المنبّه صوتًا، لكنه ليس منبّهًا كاملًا موثوقًا حتى يُصلَح ذلك.</string>
     <string name="result_temporary_scheduled">منبّه %1$s مجدول في %2$s</string>
     <string name="result_disabled">لم يُجدول: %1$s</string>
     <string name="result_action_required">لم يُجدول: %1$s</string>

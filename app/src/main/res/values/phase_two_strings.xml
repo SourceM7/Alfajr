@@ -49,6 +49,7 @@
     <string name="action_full_screen_settings">Open full-screen alarm settings</string>
 
     <string name="result_scheduled">Scheduled for %1$s</string>
+    <string name="result_scheduled_degraded">Scheduled for %1$s, but degraded: %2$s. The alarm will still sound; it is not a reliable full alarm until this is fixed.</string>
     <string name="result_temporary_scheduled">%1$s alarm scheduled for %2$s</string>
     <string name="result_disabled">Not scheduled: %1$s</string>
     <string name="result_action_required">Not scheduled: %1$s</string>

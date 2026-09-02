@@ -105,13 +105,16 @@ class AlarmSchedulingCoordinatorTest {
         assertFalse(stateStore.current().claimsActiveAlarm)
     }
 
-    @Test fun `a capability revoked after scheduling stops the active claim`() = runBlocking {
+    @Test fun `a capability that prevents delivery stops the active claim`() = runBlocking {
+        // Only a capability Android cannot work around may unregister a
+        // scheduled alarm. Notifications and full-screen access degrade it
+        // instead; see AlarmSessionLifecycleTest.
         coordinator.enableDaily()
-        capabilities = healthyCapabilities().copy(notificationsEnabled = false)
+        capabilities = healthyCapabilities().copy(canScheduleExactAlarms = false)
 
         val result = coordinator.scheduleNext(ScheduleReason.AppOpened)
 
-        assertEquals(ScheduleResult.ActionRequired(CapabilityProblem.NOTIFICATIONS_DISABLED), result)
+        assertEquals(ScheduleResult.ActionRequired(CapabilityProblem.EXACT_ALARMS_UNAVAILABLE), result)
         assertTrue(gateway.registered.isEmpty())
         assertFalse(stateStore.current().claimsActiveAlarm)
     }

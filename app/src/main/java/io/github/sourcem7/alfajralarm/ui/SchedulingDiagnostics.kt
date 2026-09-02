@@ -189,8 +189,16 @@ private fun HealthSummary(problems: List<CapabilityProblem>, warnings: List<Alar
 private fun ScheduleResult.describe(preferences: AlarmPreferences): String {
     val zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id
     return when (this) {
-        is ScheduleResult.Scheduled ->
-            stringResource(R.string.result_scheduled, occurrence.alarmInstant.toEpochMilliseconds().formatDateTime(zoneId))
+        is ScheduleResult.Scheduled -> {
+            val at = occurrence.alarmInstant.toEpochMilliseconds().formatDateTime(zoneId)
+            // A degraded alarm still rings, but it must never read as healthy.
+            if (isDegraded) {
+                val causes = degradedBy.map { stringResource(it.labelResource()) }
+                stringResource(R.string.result_scheduled_degraded, at, causes.joinToString())
+            } else {
+                stringResource(R.string.result_scheduled, at)
+            }
+        }
         is ScheduleResult.TemporaryScheduled ->
             stringResource(R.string.result_temporary_scheduled, stringResource(kind.labelResource()), triggerAtMillis.formatDateTime(zoneId))
         is ScheduleResult.Disabled -> stringResource(R.string.result_disabled, stringResource(reason.labelResource()))

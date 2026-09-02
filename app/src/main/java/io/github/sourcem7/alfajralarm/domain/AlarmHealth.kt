@@ -25,12 +25,39 @@ fun interface CapabilityProbe {
     fun read(): AlarmCapabilities
 }
 
+/**
+ * True when Android cannot deliver the alarm at all, so it must not stay
+ * registered. Notifications and the full-screen intent are deliberately absent:
+ * Android still plays alarm audio and offers its own heads-up notification, so a
+ * revoked one degrades an already-scheduled alarm instead of removing it.
+ */
+val CapabilityProblem.preventsDelivery: Boolean
+    get() = when (this) {
+        CapabilityProblem.CONFIGURATION_INCOMPLETE,
+        CapabilityProblem.EXACT_ALARMS_UNAVAILABLE,
+        CapabilityProblem.SCHEDULING_FAILED,
+        -> true
+
+        CapabilityProblem.NOTIFICATIONS_DISABLED,
+        CapabilityProblem.FULL_SCREEN_UNAVAILABLE,
+        -> false
+    }
+
 data class AlarmHealth(
     val problems: List<CapabilityProblem> = emptyList(),
     val warnings: List<AlarmWarning> = emptyList(),
 ) {
     val isHealthy: Boolean get() = problems.isEmpty()
     val blockingProblem: CapabilityProblem? get() = problems.firstOrNull()
+
+    /** Problems that stop delivery outright; activation is impossible. */
+    val fatalProblems: List<CapabilityProblem> get() = problems.filter { it.preventsDelivery }
+
+    /**
+     * Problems that leave a registered alarm audible but worse than promised.
+     * They must be reported, never presented as a healthy alarm.
+     */
+    val degradingProblems: List<CapabilityProblem> get() = problems.filterNot { it.preventsDelivery }
 }
 
 private const val LOW_ALARM_VOLUME_FRACTION = 0.25

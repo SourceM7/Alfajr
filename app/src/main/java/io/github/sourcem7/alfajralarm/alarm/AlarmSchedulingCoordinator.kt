@@ -1,6 +1,7 @@
 package io.github.sourcem7.alfajralarm.alarm
 
 import io.github.sourcem7.alfajralarm.domain.AlarmDelivery
+import io.github.sourcem7.alfajralarm.domain.AlarmHealth
 import io.github.sourcem7.alfajralarm.domain.AlarmKind
 import io.github.sourcem7.alfajralarm.domain.AlarmOutcome
 import io.github.sourcem7.alfajralarm.domain.AlarmPreferences
@@ -25,6 +26,7 @@ import io.github.sourcem7.alfajralarm.domain.validateForPreview
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -105,19 +107,22 @@ class AlarmSchedulingCoordinator(
 
     override suspend fun scheduleSnooze(sessionId: String, minutes: Int): ScheduleResult = mutex.withLock {
         val state = stateStore.current()
-        val isKnownSession = sessionId == state.ringingSessionId || sessionId == state.testSessionId
-        if (!isKnownSession) return@withLock ScheduleResult.Disabled(DisabledReason.STALE_SESSION)
-        if (state.snoozeCount >= MAX_SNOOZE_COUNT) return@withLock ScheduleResult.Disabled(DisabledReason.SNOOZE_LIMIT_REACHED)
+        val session = state.sessionKind(sessionId) ?: return@withLock ScheduleResult.Disabled(DisabledReason.STALE_SESSION)
+        // Each session counts its own snoozes so a test alarm neither consumes
+        // nor is limited by the daily session's three.
+        val used = if (session == SessionKind.TEST) state.testSnoozeCount else state.snoozeCount
+        if (used >= MAX_SNOOZE_COUNT) return@withLock ScheduleResult.Disabled(DisabledReason.SNOOZE_LIMIT_REACHED)
         val now = clock()
         val trigger = (now + minutes.minutes).toEpochMilliseconds()
         val request = AlarmRequest(kind = AlarmKind.SNOOZE, triggerAtMillis = trigger, sessionId = sessionId)
         if (!gateway.scheduleAlarmClock(request)) {
             return@withLock ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED)
         }
-        // A test session must never mutate the daily snooze count or outcome.
-        if (sessionId == state.ringingSessionId) {
-            stateStore.update {
-                it.copy(
+        stateStore.update {
+            when (session) {
+                // A test session must never mutate the daily count or outcome.
+                SessionKind.TEST -> it.copy(testSnoozeCount = it.testSnoozeCount + 1)
+                SessionKind.RINGING -> it.copy(
                     snoozeCount = it.snoozeCount + 1,
                     lastOutcome = AlarmOutcome.SNOOZED,
                     lastOutcomeEpochMillis = now.toEpochMilliseconds(),
@@ -136,7 +141,7 @@ class AlarmSchedulingCoordinator(
         if (!gateway.scheduleExactWhileIdle(request)) {
             return@withLock ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED)
         }
-        stateStore.update { it.copy(testSessionId = sessionId) }
+        stateStore.update { it.copy(testSessionId = sessionId, testSnoozeCount = 0) }
         ScheduleResult.TemporaryScheduled(AlarmKind.TEST, trigger)
     }
 
@@ -171,10 +176,17 @@ class AlarmSchedulingCoordinator(
             }
 
             AlarmKind.SNOOZE -> {
+                // A snooze belongs to whichever session scheduled it, including
+                // a test session, so the test alarm exercises the real controls.
                 val sessionId = request.sessionId
-                if (sessionId == null || sessionId != state.ringingSessionId) return@withLock AlarmDelivery.Ignored
+                val session = sessionId?.let(state::sessionKind) ?: return@withLock AlarmDelivery.Ignored
                 stateStore.update { it.copy(lastDeliveryEpochMillis = now.toEpochMilliseconds()) }
-                AlarmDelivery.Ring(AlarmKind.SNOOZE, sessionId, isTest = false, followingDaily = null)
+                AlarmDelivery.Ring(
+                    kind = AlarmKind.SNOOZE,
+                    sessionId = sessionId,
+                    isTest = session == SessionKind.TEST,
+                    followingDaily = null,
+                )
             }
 
             AlarmKind.TEST -> {
@@ -189,15 +201,25 @@ class AlarmSchedulingCoordinator(
     override suspend fun recordOutcome(sessionId: String, outcome: AlarmOutcome) {
         mutex.withLock {
             val state = stateStore.current()
-            // A test session never changes the daily outcome.
-            if (sessionId != state.ringingSessionId) return@withLock
+            val session = state.sessionKind(sessionId) ?: return@withLock
+            // SNOOZED is not terminal. The session has to survive it, or the
+            // snooze that was just scheduled would be rejected on delivery and
+            // the three-snooze limit would restart from zero.
+            val isTerminal = outcome != AlarmOutcome.SNOOZED
+            // Nothing should ring after a terminal outcome, so a snooze that is
+            // still pending for this session is withdrawn.
+            if (isTerminal) gateway.cancel(AlarmKind.SNOOZE)
             stateStore.update {
-                it.copy(
-                    lastOutcome = outcome,
-                    lastOutcomeEpochMillis = clock().toEpochMilliseconds(),
-                    ringingSessionId = null,
-                    snoozeCount = 0,
-                )
+                when (session) {
+                    // A test session never changes the daily outcome or counters.
+                    SessionKind.TEST -> if (isTerminal) it.copy(testSessionId = null, testSnoozeCount = 0) else it
+                    SessionKind.RINGING -> it.copy(
+                        lastOutcome = outcome,
+                        lastOutcomeEpochMillis = clock().toEpochMilliseconds(),
+                        ringingSessionId = if (isTerminal) null else it.ringingSessionId,
+                        snoozeCount = if (isTerminal) 0 else it.snoozeCount,
+                    )
+                }
             }
         }
     }
@@ -229,7 +251,12 @@ class AlarmSchedulingCoordinator(
             clearRegisteredAlarm()
             return ScheduleResult.InvalidConfiguration(it)
         }
-        blockingProblem(loaded)?.let { problem ->
+        val health = health(loaded)
+        // Only a problem that makes delivery impossible may unregister the
+        // alarm. A revoked notification or full-screen permission leaves the
+        // alarm scheduled and reports it as degraded, because Android still
+        // plays alarm audio and shows its own heads-up notification.
+        health.fatalProblems.firstOrNull()?.let { problem ->
             gateway.cancel(AlarmKind.DAILY)
             clearRegisteredAlarm()
             return ScheduleResult.ActionRequired(problem)
@@ -255,10 +282,18 @@ class AlarmSchedulingCoordinator(
             }
             return ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED)
         }
+        val localToday = from.toLocalDateTime(TimeZone.of(occurrence.zoneId)).date
         stateStore.update {
-            it.copy(nextPrayerDate = occurrence.prayerLocalDate, nextAlarmEpochMillis = triggerAtMillis)
+            it.copy(
+                nextPrayerDate = occurrence.prayerLocalDate,
+                nextAlarmEpochMillis = triggerAtMillis,
+                // A skipped date is spent once it is behind the selected zone's
+                // current date. Keeping it through its own day leaves undo
+                // available for as long as it can still restore anything.
+                skippedPrayerDate = it.skippedPrayerDate?.takeIf { skipped -> skipped >= localToday },
+            )
         }
-        return ScheduleResult.Scheduled(occurrence)
+        return ScheduleResult.Scheduled(occurrence, degradedBy = health.degradingProblems)
     }
 
     private suspend fun clearRegisteredAlarm() {
@@ -268,11 +303,24 @@ class AlarmSchedulingCoordinator(
     private fun configurationProblem(loaded: AlarmPreferences): PreferenceError? =
         (loaded.validateForPreview() as? PreferenceValidation.Invalid)?.reason
 
+    private fun health(loaded: AlarmPreferences): AlarmHealth =
+        evaluateAlarmHealth(loaded, capabilities.read(), deviceZoneId())
+
+    /** Every capability problem blocks activation, degrading ones included. */
     private fun blockingProblem(loaded: AlarmPreferences): CapabilityProblem? =
-        evaluateAlarmHealth(loaded, capabilities.read(), deviceZoneId()).problems
-            .firstOrNull { it != CapabilityProblem.CONFIGURATION_INCOMPLETE }
+        health(loaded).problems.firstOrNull { it != CapabilityProblem.CONFIGURATION_INCOMPLETE }
 
     companion object {
         val TEST_ALARM_DELAY: Duration = 10.seconds
     }
+}
+
+/** Which of the two possible ringing sessions an incoming session ID names. */
+private enum class SessionKind { RINGING, TEST }
+
+/** Null for a session the app no longer owns, so stale commands are ignored. */
+private fun AlarmState.sessionKind(sessionId: String): SessionKind? = when (sessionId) {
+    ringingSessionId -> SessionKind.RINGING
+    testSessionId -> SessionKind.TEST
+    else -> null
 }

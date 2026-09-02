@@ -37,6 +37,7 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
         ringingSessionId = this[RINGING_SESSION_ID],
         snoozeCount = this[SNOOZE_COUNT] ?: 0,
         testSessionId = this[TEST_SESSION_ID],
+        testSnoozeCount = this[TEST_SNOOZE_COUNT] ?: 0,
         lastOutcome = this[LAST_OUTCOME]?.let { runCatching { AlarmOutcome.valueOf(it) }.getOrNull() },
         lastOutcomeEpochMillis = this[LAST_OUTCOME_MILLIS],
         lastDeliveryEpochMillis = this[LAST_DELIVERY_MILLIS],
@@ -46,6 +47,7 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
     private fun MutablePreferences.write(state: AlarmState) {
         this[DAILY_ENABLED] = state.dailyEnabled
         this[SNOOZE_COUNT] = state.snoozeCount
+        this[TEST_SNOOZE_COUNT] = state.testSnoozeCount
         this[ACTIVATION_CONFIRMED] = state.activationConfirmed
         setOrRemove(NEXT_PRAYER_DATE, state.nextPrayerDate?.toString())
         setOrRemove(NEXT_ALARM_MILLIS, state.nextAlarmEpochMillis)
@@ -71,6 +73,7 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
         val RINGING_SESSION_ID = stringPreferencesKey("ringing_session_id")
         val SNOOZE_COUNT = intPreferencesKey("snooze_count")
         val TEST_SESSION_ID = stringPreferencesKey("test_session_id")
+        val TEST_SNOOZE_COUNT = intPreferencesKey("test_snooze_count")
         val LAST_OUTCOME = stringPreferencesKey("last_outcome")
         val LAST_OUTCOME_MILLIS = longPreferencesKey("last_outcome_millis")
         val LAST_DELIVERY_MILLIS = longPreferencesKey("last_delivery_millis")

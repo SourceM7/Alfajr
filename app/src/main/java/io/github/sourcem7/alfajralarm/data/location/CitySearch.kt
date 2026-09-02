@@ -8,13 +8,20 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 class OfflineCityRepository(private val context: Context) {
-    private val cities: List<IndexedCity> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { loadCities() }
+    private val catalogue: Catalogue by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { loadCatalogue() }
+
+    /**
+     * The GeoNames notice carried by the asset. Attribution is a condition of
+     * the data's license, so the licenses screen reads it from the same file the
+     * cities came from rather than from a hard-coded copy.
+     */
+    suspend fun attribution(): CityAttribution = withContext(Dispatchers.Default) { catalogue.attribution }
 
     suspend fun search(query: String, limit: Int = DEFAULT_LIMIT): List<FixedLocation> =
         withContext(Dispatchers.Default) {
             val needle = CityNormalizer.normalize(query)
             if (needle.isBlank()) return@withContext emptyList()
-            cities.asSequence()
+            catalogue.cities.asSequence()
                 .mapNotNull { city -> city.matchScore(needle)?.let { score -> score to city } }
                 .sortedWith(compareBy<Pair<Int, IndexedCity>> { it.first }.thenByDescending { it.second.record.population }.thenBy { it.second.record.name })
                 .take(limit.coerceIn(1, MAX_LIMIT))
@@ -22,9 +29,20 @@ class OfflineCityRepository(private val context: Context) {
                 .toList()
         }
 
-    private fun loadCities(): List<IndexedCity> = context.assets.open(CITY_ASSET).bufferedReader().use { reader ->
-        assetJson.decodeFromString<CityAsset>(reader.readText()).cities.map(::IndexedCity)
+    private fun loadCatalogue(): Catalogue = context.assets.open(CITY_ASSET).bufferedReader().use { reader ->
+        val asset = assetJson.decodeFromString<CityAsset>(reader.readText())
+        Catalogue(
+            cities = asset.cities.map(::IndexedCity),
+            attribution = CityAttribution(
+                notice = asset.attribution,
+                license = asset.license,
+                source = asset.source,
+                sourceDate = asset.sourceDate,
+            ),
+        )
     }
+
+    private class Catalogue(val cities: List<IndexedCity>, val attribution: CityAttribution)
 
     private class IndexedCity(val record: CityRecord) {
         private val names = listOfNotNull(record.name, record.asciiName, record.arabicName)

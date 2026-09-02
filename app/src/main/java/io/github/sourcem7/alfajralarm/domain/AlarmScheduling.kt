@@ -31,8 +31,17 @@ sealed interface ScheduleReason {
 }
 
 sealed interface ScheduleResult {
-    /** The daily Fajr alarm is registered with the platform. */
-    data class Scheduled(val occurrence: FajrOccurrence) : ScheduleResult
+    /**
+     * The daily Fajr alarm is registered with the platform. [degradedBy] is
+     * empty for a healthy alarm; otherwise the alarm will still ring but worse
+     * than promised, and the UI must say so rather than claim it is healthy.
+     */
+    data class Scheduled(
+        val occurrence: FajrOccurrence,
+        val degradedBy: List<CapabilityProblem> = emptyList(),
+    ) : ScheduleResult {
+        val isDegraded: Boolean get() = degradedBy.isNotEmpty()
+    }
 
     /** A snooze or test alarm is registered; it carries no prayer occurrence. */
     data class TemporaryScheduled(val kind: AlarmKind, val triggerAtMillis: Long) : ScheduleResult
