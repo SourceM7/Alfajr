@@ -3,6 +3,7 @@ agp = "9.3.2"
 adhan = "0.0.7"
 androidxActivity = "1.12.4"
 androidxCore = "1.18.0"
+androidxTestCore = "1.7.0"
 composeBom = "2026.01.00"
 datastore = "1.2.0"
 dependencyLicenseReport = "3.1.4"
@@ -27,6 +28,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-test-core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "material3Adaptive" }
