@@ -1,5 +1,6 @@
 package io.github.sourcem7.alfajralarm.ui
 
+import android.provider.Settings
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
@@ -48,6 +49,7 @@ import io.github.sourcem7.alfajralarm.domain.MAX_SNOOZE_COUNT
 import io.github.sourcem7.alfajralarm.domain.RingingSession
 import io.github.sourcem7.alfajralarm.domain.RingtoneSource
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Date
 
@@ -120,6 +122,7 @@ private fun SnoozeControl(session: RingingSession, onSnooze: () -> Unit) {
 
 @Composable
 private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     var progress by remember(session.sessionId) { mutableFloatStateOf(0f) }
@@ -127,6 +130,11 @@ private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
         if (session.tapToDismiss) R.string.ringing_tap_to_dismiss else R.string.ringing_hold_to_dismiss,
     )
     val label = stringResource(R.string.action_dismiss)
+    // A duration scale of zero is Android's user-level request to reduce motion.
+    // Keep the safety hold but do not animate a progress bar in that mode.
+    val reduceMotion = remember {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }
 
     // Deliberately not a Button: its own click handling would consume the press
     // before the hold gesture could measure it.
@@ -154,11 +162,13 @@ private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
                     detectTapGestures(
                         onPress = {
                             val hold: Job = scope.launch {
-                                animate(
-                                    initialValue = 0f,
-                                    targetValue = 1f,
-                                    animationSpec = tween(DISMISS_HOLD_MILLIS, easing = LinearEasing),
-                                ) { value, _ -> progress = value }
+                                if (reduceMotion) delay(DISMISS_HOLD_MILLIS.toLong()) else {
+                                    animate(
+                                        initialValue = 0f,
+                                        targetValue = 1f,
+                                        animationSpec = tween(DISMISS_HOLD_MILLIS, easing = LinearEasing),
+                                    ) { value, _ -> progress = value }
+                                }
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onDismiss()
                             }
@@ -179,7 +189,7 @@ private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
         ) {
             Text(label, style = MaterialTheme.typography.headlineSmall)
             Text(hint, style = MaterialTheme.typography.bodyMedium)
-            if (progress > 0f) {
+            if (progress > 0f && !reduceMotion) {
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier

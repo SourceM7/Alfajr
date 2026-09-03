@@ -13,6 +13,7 @@ import io.github.sourcem7.alfajralarm.calculation.AdhanFajrCalculator
 import io.github.sourcem7.alfajralarm.data.location.OfflineCityRepository
 import io.github.sourcem7.alfajralarm.data.settings.AlarmPreferencesRepository
 import io.github.sourcem7.alfajralarm.data.settings.AlarmStateRepository
+import io.github.sourcem7.alfajralarm.data.settings.AppearancePreferencesRepository
 import io.github.sourcem7.alfajralarm.domain.CapabilityProbe
 import io.github.sourcem7.alfajralarm.domain.NextOccurrenceSelector
 import io.github.sourcem7.alfajralarm.domain.PreferencesProvider
@@ -27,6 +28,7 @@ class AppGraph(context: Context) {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val preferencesRepository = AlarmPreferencesRepository(appContext)
+    val appearancePreferencesRepository = AppearancePreferencesRepository(appContext)
     val alarmStateRepository = AlarmStateRepository(appContext)
     val cityRepository = OfflineCityRepository(appContext)
     val capabilityProbe: CapabilityProbe = AndroidCapabilityProbe(appContext)
@@ -34,12 +36,14 @@ class AppGraph(context: Context) {
 
     private val preferencesProvider = PreferencesProvider { preferencesRepository.preferences.first() }
 
+    val nextOccurrenceSelector = NextOccurrenceSelector(calculator)
+
     val scheduler = AlarmSchedulingCoordinator(
         preferences = preferencesProvider,
         stateStore = alarmStateRepository,
         gateway = AndroidExactAlarmGateway(appContext),
         capabilities = capabilityProbe,
-        selector = NextOccurrenceSelector(calculator),
+        selector = nextOccurrenceSelector,
     )
 
     /**
