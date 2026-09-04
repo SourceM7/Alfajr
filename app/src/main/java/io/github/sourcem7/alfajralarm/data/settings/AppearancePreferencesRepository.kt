@@ -4,17 +4,20 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.sourcem7.alfajralarm.domain.AppearancePreferencesStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /** Backed-up display choices. They are intentionally not part of the alarm domain. */
 private val Context.appearancePreferencesDataStore by preferencesDataStore(name = "appearance_preferences")
 
-class AppearancePreferencesRepository(private val context: Context) {
-    val dynamicColor: Flow<Boolean> = context.appearancePreferencesDataStore.data.map { it[DYNAMIC_COLOR] ?: false }
+class DataStoreAppearancePreferencesRepository(private val context: Context) : AppearancePreferencesStore {
+    override val dynamicColor: Flow<Boolean> = context.appearancePreferencesDataStore.data.map { it[DYNAMIC_COLOR] ?: false }
 
-    suspend fun updateDynamicColor(enabled: Boolean) = context.appearancePreferencesDataStore.edit {
-        it[DYNAMIC_COLOR] = enabled
+    override suspend fun updateDynamicColor(enabled: Boolean) {
+        context.appearancePreferencesDataStore.edit {
+            it[DYNAMIC_COLOR] = enabled
+        }
     }
 
     private companion object {

@@ -10,6 +10,7 @@ import io.github.sourcem7.alfajralarm.domain.PreferencesProvider
 import io.github.sourcem7.alfajralarm.domain.RINGING_TIMEOUT
 import io.github.sourcem7.alfajralarm.domain.RingingCommand
 import io.github.sourcem7.alfajralarm.domain.RingingSession
+import io.github.sourcem7.alfajralarm.domain.RingingSessionObserver
 import io.github.sourcem7.alfajralarm.domain.RingingWakeLock
 import io.github.sourcem7.alfajralarm.domain.RingtoneSource
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
@@ -43,12 +44,12 @@ class RingingController(
     private val wakeLock: RingingWakeLock,
     private val missedNotifier: MissedAlarmNotifier,
     private val clock: () -> Instant = { Instant.fromEpochMilliseconds(System.currentTimeMillis()) },
-) {
+) : RingingSessionObserver {
     private val mutex = Mutex()
     private val current = MutableStateFlow<RingingSession?>(null)
 
     /** The running session, or null when nothing is ringing. */
-    val session: StateFlow<RingingSession?> = current.asStateFlow()
+    override val session: StateFlow<RingingSession?> = current.asStateFlow()
 
     /**
      * Begins ringing for [sessionId], or returns the already-running session

@@ -38,9 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -59,10 +57,6 @@ import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sourcem7.alfajralarm.R
-import io.github.sourcem7.alfajralarm.app.AppGraph
-import io.github.sourcem7.alfajralarm.calculation.MethodSuggestions
-import io.github.sourcem7.alfajralarm.data.location.ManualLocation
-import io.github.sourcem7.alfajralarm.data.location.ManualLocationResult
 import io.github.sourcem7.alfajralarm.domain.AlarmOutcome
 import io.github.sourcem7.alfajralarm.domain.AlarmPreferences
 import io.github.sourcem7.alfajralarm.domain.AlarmState
@@ -71,11 +65,9 @@ import io.github.sourcem7.alfajralarm.domain.CapabilityProblem
 import io.github.sourcem7.alfajralarm.domain.FajrMethod
 import io.github.sourcem7.alfajralarm.domain.FajrOccurrence
 import io.github.sourcem7.alfajralarm.domain.FixedLocation
+import io.github.sourcem7.alfajralarm.domain.ManualLocationResult
 import io.github.sourcem7.alfajralarm.domain.PreferenceError
-import io.github.sourcem7.alfajralarm.domain.ScheduleReason
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
-import io.github.sourcem7.alfajralarm.domain.evaluateAlarmHealth
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import java.time.Instant
@@ -85,21 +77,21 @@ import java.util.Date
 
 private enum class Screen { HOME, ONBOARDING, LOCATION, METHOD, ADJUSTMENTS, SETTINGS, PRIVACY, LICENSES, TROUBLESHOOTING }
 
-/** The production single-activity UI. Diagnostics remain out of this navigation graph. */
+/** The production single-activity UI. */
 @Composable
-fun AlfajrApp(graph: AppGraph) {
-    val preferences by graph.preferencesRepository.preferences.collectAsStateWithLifecycle(initialValue = AlarmPreferences())
-    val dynamicColor by graph.appearancePreferencesRepository.dynamicColor.collectAsStateWithLifecycle(initialValue = false)
-    val state by graph.alarmStateRepository.state.collectAsStateWithLifecycle(initialValue = AlarmState())
+fun AlfajrApp(viewModel: AlfajrViewModel) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val preferences = uiState.preferences
+    val dynamicColor = uiState.dynamicColor
+    val state = uiState.alarmState
     var screen by remember(state.activationConfirmed) {
         mutableStateOf(if (state.activationConfirmed) Screen.HOME else Screen.ONBOARDING)
     }
     val context = LocalContext.current
-    var capabilityVersion by remember { mutableIntStateOf(0) }
-    val health = remember(preferences, capabilityVersion) {
-        evaluateAlarmHealth(preferences, graph.capabilityProbe.read(), ZoneId.systemDefault().id)
+    val health = uiState.health
+    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        viewModel.refreshCapabilities()
     }
-    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { capabilityVersion++ }
     val resolve: (CapabilityProblem) -> Unit = { problem ->
         when {
             problem == CapabilityProblem.NOTIFICATIONS_DISABLED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
@@ -107,18 +99,15 @@ fun AlfajrApp(graph: AppGraph) {
             else -> context.openCapabilitySettings(problem)
         }
     }
-    LaunchedEffect(preferences, state.dailyEnabled) {
-        if (state.dailyEnabled) graph.scheduler.scheduleNext(ScheduleReason.SettingsChanged)
-    }
     AlfajrTheme(dynamicColor = dynamicColor) {
         Surface(modifier = Modifier.fillMaxSize()) {
             when (screen) {
-                Screen.HOME -> HomeScreen(graph, preferences, state, health.problems, health.warnings, resolve, onSettings = { screen = Screen.SETTINGS })
-                Screen.ONBOARDING -> OnboardingScreen(graph, preferences, state, health.problems, resolve, onLocation = { screen = Screen.LOCATION }, onMethod = { screen = Screen.METHOD }, onAdjustments = { screen = Screen.ADJUSTMENTS }, onComplete = { screen = Screen.HOME })
-                Screen.LOCATION -> LocationScreen(graph, preferences, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
-                Screen.METHOD -> MethodScreen(graph, preferences, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
-                Screen.ADJUSTMENTS -> AdjustmentsScreen(graph, preferences, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
-                Screen.SETTINGS -> SettingsScreen(graph, preferences, dynamicColor, onBack = { screen = Screen.HOME }, onLocation = { screen = Screen.LOCATION }, onMethod = { screen = Screen.METHOD }, onAdjustments = { screen = Screen.ADJUSTMENTS }, onPrivacy = { screen = Screen.PRIVACY }, onLicenses = { screen = Screen.LICENSES }, onTroubleshooting = { screen = Screen.TROUBLESHOOTING })
+                Screen.HOME -> HomeScreen(viewModel, preferences, state, uiState.preview, health.problems, health.warnings, resolve, onSettings = { screen = Screen.SETTINGS })
+                Screen.ONBOARDING -> OnboardingScreen(viewModel, preferences, uiState.preview, health.problems, resolve, onLocation = { screen = Screen.LOCATION }, onMethod = { screen = Screen.METHOD }, onAdjustments = { screen = Screen.ADJUSTMENTS }, onComplete = { screen = Screen.HOME })
+                Screen.LOCATION -> LocationScreen(viewModel, preferences, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
+                Screen.METHOD -> MethodScreen(viewModel, preferences, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
+                Screen.ADJUSTMENTS -> AdjustmentsScreen(viewModel, preferences, uiState.preview, onBack = { screen = if (state.activationConfirmed) Screen.SETTINGS else Screen.ONBOARDING })
+                Screen.SETTINGS -> SettingsScreen(viewModel, preferences, dynamicColor, onBack = { screen = Screen.HOME }, onLocation = { screen = Screen.LOCATION }, onMethod = { screen = Screen.METHOD }, onAdjustments = { screen = Screen.ADJUSTMENTS }, onPrivacy = { screen = Screen.PRIVACY }, onLicenses = { screen = Screen.LICENSES }, onTroubleshooting = { screen = Screen.TROUBLESHOOTING })
                 Screen.PRIVACY -> ReadScreen(R.string.privacy_title, R.string.privacy_body) { screen = Screen.SETTINGS }
                 Screen.LICENSES -> ReadScreen(R.string.licenses_title, R.string.licenses_body) { screen = Screen.SETTINGS }
                 Screen.TROUBLESHOOTING -> ReadScreen(R.string.troubleshooting_title, R.string.troubleshooting_body) { screen = Screen.SETTINGS }
@@ -143,10 +132,9 @@ private fun Page(title: String, onBack: (() -> Unit)? = null, action: (@Composab
 }
 
 @Composable
-private fun HomeScreen(graph: AppGraph, preferences: AlarmPreferences, state: AlarmState, problems: List<CapabilityProblem>, warnings: List<AlarmWarning>, resolve: (CapabilityProblem) -> Unit, onSettings: () -> Unit) {
+private fun HomeScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, state: AlarmState, occurrence: FajrOccurrence?, problems: List<CapabilityProblem>, warnings: List<AlarmWarning>, resolve: (CapabilityProblem) -> Unit, onSettings: () -> Unit) {
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf<ScheduleResult?>(null) }
-    val occurrence = remember(preferences, state.nextAlarmEpochMillis) { graph.previewOccurrence(preferences) }
     Page(stringResource(R.string.home_title), action = { TextButton(onClick = onSettings) { Text(stringResource(R.string.action_settings)) } }) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxSize()) {
             item { Text(if (state.dailyEnabled) stringResource(R.string.home_alarm_on) else stringResource(R.string.home_alarm_off), style = MaterialTheme.typography.labelLarge, color = if (state.dailyEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error) }
@@ -154,11 +142,11 @@ private fun HomeScreen(graph: AppGraph, preferences: AlarmPreferences, state: Al
             item { HealthCard(state, problems, warnings, resolve) }
             item {
                 Button(modifier = Modifier.fillMaxWidth(), onClick = {
-                    scope.launch { result = if (state.dailyEnabled) graph.scheduler.disableDaily() else graph.scheduler.enableDaily() }
+                    scope.launch { result = viewModel.setDailyEnabled(!state.dailyEnabled) }
                 }) { Text(stringResource(if (state.dailyEnabled) R.string.action_disable_daily else R.string.action_enable_daily)) }
             }
             result?.let { result -> item { Text(result.userMessage(LocalContext.current), style = MaterialTheme.typography.bodyMedium) } }
-            if (state.dailyEnabled) item { SkipCard(state, graph, preferences.location?.zoneId ?: ZoneId.systemDefault().id) }
+            if (state.dailyEnabled) item { SkipCard(state, viewModel, preferences.location?.zoneId ?: ZoneId.systemDefault().id) }
             item { OutcomeCard(state) }
         }
     }
@@ -215,16 +203,16 @@ private fun HealthCard(state: AlarmState, problems: List<CapabilityProblem>, war
 }
 
 @Composable
-private fun SkipCard(state: AlarmState, graph: AppGraph, selectedZoneId: String) {
+private fun SkipCard(state: AlarmState, viewModel: AlfajrViewModel, selectedZoneId: String) {
     val scope = rememberCoroutineScope()
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.skip_next_title), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.skip_next_body))
-            if (state.skippedPrayerDate == null) Button(onClick = { scope.launch { graph.scheduler.skipNext() } }) { Text(stringResource(R.string.skip_next_alarm)) }
+            if (state.skippedPrayerDate == null) Button(onClick = { scope.launch { viewModel.skipNext() } }) { Text(stringResource(R.string.skip_next_alarm)) }
             else {
                 Text(stringResource(R.string.skipped_date, state.skippedPrayerDate.dateFor(selectedZoneId)))
-                Button(onClick = { scope.launch { graph.scheduler.undoSkip() } }) { Text(stringResource(R.string.undo_skip)) }
+                Button(onClick = { scope.launch { viewModel.undoSkip() } }) { Text(stringResource(R.string.undo_skip)) }
             }
         }
     }
@@ -241,7 +229,7 @@ private fun OutcomeCard(state: AlarmState) {
 }
 
 @Composable
-private fun OnboardingScreen(graph: AppGraph, preferences: AlarmPreferences, state: AlarmState, problems: List<CapabilityProblem>, resolve: (CapabilityProblem) -> Unit, onLocation: () -> Unit, onMethod: () -> Unit, onAdjustments: () -> Unit, onComplete: () -> Unit) {
+private fun OnboardingScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, preview: FajrOccurrence?, problems: List<CapabilityProblem>, resolve: (CapabilityProblem) -> Unit, onLocation: () -> Unit, onMethod: () -> Unit, onAdjustments: () -> Unit, onComplete: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var message by remember { mutableStateOf<String?>(null) }
@@ -257,7 +245,7 @@ private fun OnboardingScreen(graph: AppGraph, preferences: AlarmPreferences, sta
             item { SetupCard(1, R.string.location_title, preferences.location?.displayNameForUi() ?: stringResource(R.string.no_location_selected), onLocation) }
             item { SetupCard(2, R.string.method_title, preferences.method?.localizedName() ?: stringResource(R.string.error_method_required), onMethod) }
             item { SetupCard(3, R.string.adjustments_title, stringResource(R.string.adjustments_body), onAdjustments) }
-            item { PreviewCard(graph, preferences) }
+            item { PreviewCard(preview) }
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -273,7 +261,7 @@ private fun OnboardingScreen(graph: AppGraph, preferences: AlarmPreferences, sta
                         Text(stringResource(R.string.onboarding_test_title), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(R.string.onboarding_test_body))
                         val testScheduled = stringResource(R.string.test_alarm_scheduled)
-                        TextButton(onClick = { scope.launch { graph.scheduler.scheduleTest(); message = testScheduled } }) { Text(stringResource(R.string.action_test_alarm)) }
+                        TextButton(onClick = { scope.launch { viewModel.scheduleTest(); message = testScheduled } }) { Text(stringResource(R.string.action_test_alarm)) }
                     }
                 }
             }
@@ -281,7 +269,7 @@ private fun OnboardingScreen(graph: AppGraph, preferences: AlarmPreferences, sta
                 Text(stringResource(R.string.onboarding_enable_body))
                 Button(enabled = preferences.location != null && preferences.method != null && problems.isEmpty(), modifier = Modifier.fillMaxWidth(), onClick = {
                     scope.launch {
-                        val result = graph.scheduler.enableDaily()
+                        val result = viewModel.setDailyEnabled(true)
                         message = result.userMessage(context)
                         if (result is ScheduleResult.Scheduled) onComplete()
                     }
@@ -305,22 +293,21 @@ private fun SetupCard(step: Int, title: Int, detail: String, onClick: () -> Unit
 }
 
 @Composable
-private fun LocationScreen(graph: AppGraph, preferences: AlarmPreferences, onBack: () -> Unit) {
-    val scope = rememberCoroutineScope()
+private fun LocationScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, onBack: () -> Unit) {
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf(emptyList<FixedLocation>()) }
+    val results by viewModel.cityResults.collectAsStateWithLifecycle()
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
     var zoneId by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<PreferenceError?>(null) }
-    LaunchedEffect(query) { delay(200); results = graph.cityRepository.search(query) }
+    LaunchedEffect(query) { viewModel.search(query) }
     Page(stringResource(R.string.location_title), onBack) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
             item { Text(stringResource(R.string.location_body)) }
             item { OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.city_search_label)) }, singleLine = true) }
             if (query.isNotBlank() && results.isEmpty()) item { Text(stringResource(R.string.city_results_empty)) }
             items(results, key = { it.id }) { city ->
-                Card(modifier = Modifier.fillMaxWidth().clickable { scope.launch { graph.preferencesRepository.updateLocation(city); onBack() } }) {
+                Card(modifier = Modifier.fillMaxWidth().clickable { viewModel.selectLocation(city); onBack() }) {
                     Column(modifier = Modifier.padding(16.dp)) { Text(city.displayNameForUi(), style = MaterialTheme.typography.titleMedium); Text(listOfNotNull(city.administrationName, city.countryCode, city.zoneId).joinToString(stringResource(R.string.separator_dot)), style = MaterialTheme.typography.bodySmall) }
                 }
             }
@@ -333,8 +320,8 @@ private fun LocationScreen(graph: AppGraph, preferences: AlarmPreferences, onBac
                         OutlinedTextField(zoneId, { zoneId = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.time_zone)) }, singleLine = true)
                         error?.let { Text(stringResource(it.labelResource()), color = MaterialTheme.colorScheme.error) }
                         Button(onClick = {
-                            when (val manual = ManualLocation.create(latitude, longitude, zoneId)) {
-                                is ManualLocationResult.Valid -> scope.launch { graph.preferencesRepository.updateLocation(manual.location); onBack() }
+                            when (val manual = viewModel.saveManualLocation(latitude, longitude, zoneId)) {
+                                is ManualLocationResult.Valid -> onBack()
                                 is ManualLocationResult.Invalid -> error = manual.reason
                             }
                         }) { Text(stringResource(R.string.save_manual_location)) }
@@ -347,14 +334,13 @@ private fun LocationScreen(graph: AppGraph, preferences: AlarmPreferences, onBac
 }
 
 @Composable
-private fun MethodScreen(graph: AppGraph, preferences: AlarmPreferences, onBack: () -> Unit) {
-    val scope = rememberCoroutineScope()
+private fun MethodScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, onBack: () -> Unit) {
     var candidate by remember(preferences.method) { mutableStateOf(preferences.method) }
     Page(stringResource(R.string.method_title), onBack) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
             item { Text(stringResource(R.string.method_body)) }
             preferences.location?.let { location ->
-                val suggestion = MethodSuggestions.suggest(location.countryCode)
+                val suggestion = viewModel.suggestedMethod(location.countryCode)
                 item { Text(stringResource(R.string.suggested_method, suggestion.localizedName())) }
             }
             items(FajrMethod.entries.toList()) { method ->
@@ -363,21 +349,20 @@ private fun MethodScreen(graph: AppGraph, preferences: AlarmPreferences, onBack:
             item {
                 val selected = candidate
                 Text(selected?.let { stringResource(R.string.method_selection, it.localizedName()) } ?: stringResource(R.string.method_pending_selection))
-                Button(enabled = selected != null, onClick = { selected?.let { method -> scope.launch { graph.preferencesRepository.updateMethod(method); onBack() } } }) { Text(stringResource(R.string.action_confirm_method)) }
+                Button(enabled = selected != null, onClick = { selected?.let { method -> viewModel.selectMethod(method); onBack() } }) { Text(stringResource(R.string.action_confirm_method)) }
             }
         }
     }
 }
 
 @Composable
-private fun AdjustmentsScreen(graph: AppGraph, preferences: AlarmPreferences, onBack: () -> Unit) {
-    val scope = rememberCoroutineScope()
+private fun AdjustmentsScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, preview: FajrOccurrence?, onBack: () -> Unit) {
     Page(stringResource(R.string.adjustments_title), onBack) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxSize()) {
             Text(stringResource(R.string.adjustments_body))
-            OffsetControl(pluralStringResource(R.plurals.prayer_correction, kotlin.math.abs(preferences.correctionMinutes), preferences.correctionMinutes), preferences.correctionMinutes, -30, 30) { scope.launch { graph.preferencesRepository.updateCorrection(it) } }
-            OffsetControl(pluralStringResource(R.plurals.wake_offset, kotlin.math.abs(preferences.wakeOffsetMinutes), preferences.wakeOffsetMinutes), preferences.wakeOffsetMinutes, -60, 30) { scope.launch { graph.preferencesRepository.updateWakeOffset(it) } }
-            PreviewCard(graph, preferences)
+            OffsetControl(pluralStringResource(R.plurals.prayer_correction, kotlin.math.abs(preferences.correctionMinutes), preferences.correctionMinutes), preferences.correctionMinutes, -30, 30, viewModel::updateCorrection)
+            OffsetControl(pluralStringResource(R.plurals.wake_offset, kotlin.math.abs(preferences.wakeOffsetMinutes), preferences.wakeOffsetMinutes), preferences.wakeOffsetMinutes, -60, 30, viewModel::updateWakeOffset)
+            PreviewCard(preview)
         }
     }
 }
@@ -395,8 +380,7 @@ private fun OffsetControl(label: String, value: Int, minimum: Int, maximum: Int,
 }
 
 @Composable
-private fun PreviewCard(graph: AppGraph, preferences: AlarmPreferences) {
-    val occurrence = remember(preferences) { graph.previewOccurrence(preferences) }
+private fun PreviewCard(occurrence: FajrOccurrence?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.preview_title), style = MaterialTheme.typography.titleMedium)
@@ -412,14 +396,14 @@ private fun PreviewCard(graph: AppGraph, preferences: AlarmPreferences) {
 }
 
 @Composable
-private fun SettingsScreen(graph: AppGraph, preferences: AlarmPreferences, dynamicColor: Boolean, onBack: () -> Unit, onLocation: () -> Unit, onMethod: () -> Unit, onAdjustments: () -> Unit, onPrivacy: () -> Unit, onLicenses: () -> Unit, onTroubleshooting: () -> Unit) {
+private fun SettingsScreen(viewModel: AlfajrViewModel, preferences: AlarmPreferences, dynamicColor: Boolean, onBack: () -> Unit, onLocation: () -> Unit, onMethod: () -> Unit, onAdjustments: () -> Unit, onPrivacy: () -> Unit, onLicenses: () -> Unit, onTroubleshooting: () -> Unit) {
     val context = LocalContext.current
     val appName = stringResource(R.string.app_name)
     val scope = rememberCoroutineScope()
     val ringtonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri = result.data?.let { IntentCompat.getParcelableExtra(it, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java) }
-            scope.launch { graph.preferencesRepository.updateRingtone(uri?.toString()) }
+            viewModel.updateRingtone(uri?.toString())
         }
     }
     Page(stringResource(R.string.settings_title), onBack) {
@@ -432,23 +416,23 @@ private fun SettingsScreen(graph: AppGraph, preferences: AlarmPreferences, dynam
                     Text(stringResource(R.string.settings_sound), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.ringtone_row, preferences.ringtoneUri ?: stringResource(R.string.ringtone_default)))
                     Button(onClick = { ringtonePicker.launch(ringtoneIntent(context, preferences.ringtoneUri)) }) { Text(stringResource(R.string.action_choose_ringtone)) }
-                    TextButton(onClick = { scope.launch { graph.preferencesRepository.updateRingtone(null) } }) { Text(stringResource(R.string.action_use_default_ringtone)) }
-                    Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.vibration_switch), Modifier.weight(1f)); Switch(preferences.vibrationEnabled, { scope.launch { graph.preferencesRepository.updateVibration(it) } }) }
+                    TextButton(onClick = { viewModel.updateRingtone(null) }) { Text(stringResource(R.string.action_use_default_ringtone)) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.vibration_switch), Modifier.weight(1f)); Switch(preferences.vibrationEnabled, viewModel::updateVibration) }
                 } }
             }
             item {
                 Card(modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.settings_behavior), style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.snooze_length_label))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(5, 10).forEach { minutes -> FilterChip(preferences.snoozeMinutes == minutes, { scope.launch { graph.preferencesRepository.updateSnoozeMinutes(minutes) } }, label = { Text(pluralStringResource(R.plurals.snooze_length_option, minutes, minutes)) }) } }
-                    Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(stringResource(R.string.tap_to_dismiss_switch)); Text(stringResource(R.string.tap_to_dismiss_description), style = MaterialTheme.typography.bodySmall) }; Switch(preferences.tapToDismiss, { scope.launch { graph.preferencesRepository.updateTapToDismiss(it) } }) }
-                    TextButton(onClick = { scope.launch { graph.scheduler.scheduleTest() } }) { Text(stringResource(R.string.action_test_alarm)) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(5, 10).forEach { minutes -> FilterChip(preferences.snoozeMinutes == minutes, { viewModel.updateSnoozeMinutes(minutes) }, label = { Text(pluralStringResource(R.plurals.snooze_length_option, minutes, minutes)) }) } }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(stringResource(R.string.tap_to_dismiss_switch)); Text(stringResource(R.string.tap_to_dismiss_description), style = MaterialTheme.typography.bodySmall) }; Switch(preferences.tapToDismiss, viewModel::updateTapToDismiss) }
+                    TextButton(onClick = { scope.launch { viewModel.scheduleTest() } }) { Text(stringResource(R.string.action_test_alarm)) }
                 } }
             }
             item {
                 Card(modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
-                    Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(stringResource(R.string.dynamic_color_switch)); Text(stringResource(R.string.dynamic_color_description), style = MaterialTheme.typography.bodySmall) }; Switch(dynamicColor, { scope.launch { graph.appearancePreferencesRepository.updateDynamicColor(it) } }) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(stringResource(R.string.dynamic_color_switch)); Text(stringResource(R.string.dynamic_color_description), style = MaterialTheme.typography.bodySmall) }; Switch(dynamicColor, viewModel::updateDynamicColor) }
                     TextButton(onClick = { context.openLanguageSettings() }) { Text(stringResource(R.string.action_open_language_settings)) }
                 } }
             }
@@ -479,11 +463,6 @@ private fun FixedLocation.displayNameForUi(): String = when {
 private fun FajrMethod.localizedName(): String = stringResource(when (this) {
     FajrMethod.MUSLIM_WORLD_LEAGUE -> R.string.method_muslim_world_league; FajrMethod.EGYPTIAN -> R.string.method_egyptian; FajrMethod.KARACHI -> R.string.method_karachi; FajrMethod.UMM_AL_QURA -> R.string.method_umm_al_qura; FajrMethod.DUBAI -> R.string.method_dubai; FajrMethod.QATAR -> R.string.method_qatar; FajrMethod.KUWAIT -> R.string.method_kuwait; FajrMethod.MOON_SIGHTING_COMMITTEE -> R.string.method_moon_sighting_committee; FajrMethod.SINGAPORE -> R.string.method_singapore; FajrMethod.TURKEY -> R.string.method_turkey
 })
-
-private fun AppGraph.previewOccurrence(preferences: AlarmPreferences): FajrOccurrence? = runCatching {
-    if (preferences.location == null || preferences.method == null) return null
-    nextOccurrenceSelector.selectNext(kotlin.time.Clock.System.now(), preferences)
-}.getOrNull()
 
 @Composable private fun Long.timeFor(zoneId: String): String = android.text.format.DateFormat.getTimeFormat(LocalContext.current).apply { timeZone = TimeZone.getTimeZone(zoneId) }.format(Date(this))
 @Composable private fun LocalDate.dateFor(zoneId: String): String = android.text.format.DateFormat.getDateFormat(LocalContext.current).apply { timeZone = TimeZone.getTimeZone(zoneId) }.format(Date.from(java.time.LocalDateTime.of(year, month.ordinal + 1, day, 0, 0).atZone(ZoneId.of(zoneId)).toInstant()))

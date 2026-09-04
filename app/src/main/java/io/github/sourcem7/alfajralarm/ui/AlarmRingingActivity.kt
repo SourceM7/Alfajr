@@ -9,6 +9,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import androidx.activity.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sourcem7.alfajralarm.alarm.AlarmIntents
 import io.github.sourcem7.alfajralarm.alarm.AlarmRingingService
@@ -23,12 +26,19 @@ import io.github.sourcem7.alfajralarm.app.AppGraph
  * configuration change cannot start a second alarm.
  */
 class AlarmRingingActivity : ComponentActivity() {
+    private val graph: AppGraph by lazy { AppGraph.from(this) }
+    private val viewModel: RingingViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = graph.createRingingViewModel() as T
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
-        val graph = AppGraph.from(this)
         setContent {
-            val session by graph.ringing.session.collectAsStateWithLifecycle()
+            val session by viewModel.session.collectAsStateWithLifecycle()
             // The session ends in the service; the screen follows it rather
             // than deciding for itself when the alarm is over.
             LaunchedEffect(session) { if (session == null) finish() }

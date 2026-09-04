@@ -4,6 +4,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Where the ringing audio came from. The order is the fallback order: a saved
@@ -47,6 +48,11 @@ data class RingingSession(
 ) {
     /** False at the third snooze, where only dismiss remains. */
     val snoozeAvailable: Boolean get() = snoozesUsed < MAX_SNOOZE_COUNT
+}
+
+/** Read-only ringing state exposed to presentation without the runtime implementation. */
+interface RingingSessionObserver {
+    val session: StateFlow<RingingSession?>
 }
 
 /** Fixed by the product specification rather than exposed as a setting. */

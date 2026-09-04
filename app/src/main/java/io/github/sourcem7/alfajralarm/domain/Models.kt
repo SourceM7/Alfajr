@@ -1,6 +1,7 @@
 package io.github.sourcem7.alfajralarm.domain
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
 
 data class FixedLocation(
@@ -65,7 +66,7 @@ enum class PreferenceError {
 fun FixedLocation.validate(): PreferenceValidation = when {
     !latitude.isFinite() || latitude !in -90.0..90.0 -> PreferenceValidation.Invalid(PreferenceError.INVALID_LATITUDE)
     !longitude.isFinite() || longitude !in -180.0..180.0 -> PreferenceValidation.Invalid(PreferenceError.INVALID_LONGITUDE)
-    runCatching { java.time.ZoneId.of(zoneId) }.isFailure -> PreferenceValidation.Invalid(PreferenceError.INVALID_TIME_ZONE)
+    runCatching { TimeZone.of(zoneId) }.isFailure -> PreferenceValidation.Invalid(PreferenceError.INVALID_TIME_ZONE)
     else -> PreferenceValidation.Valid
 }
 

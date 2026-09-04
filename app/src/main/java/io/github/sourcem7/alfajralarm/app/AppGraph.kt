@@ -11,35 +11,51 @@ import io.github.sourcem7.alfajralarm.alarm.RingingController
 import io.github.sourcem7.alfajralarm.alarm.StatusMissedAlarmNotifier
 import io.github.sourcem7.alfajralarm.calculation.AdhanFajrCalculator
 import io.github.sourcem7.alfajralarm.data.location.OfflineCityRepository
-import io.github.sourcem7.alfajralarm.data.settings.AlarmPreferencesRepository
+import io.github.sourcem7.alfajralarm.data.settings.DataStoreAlarmPreferencesRepository
 import io.github.sourcem7.alfajralarm.data.settings.AlarmStateRepository
-import io.github.sourcem7.alfajralarm.data.settings.AppearancePreferencesRepository
+import io.github.sourcem7.alfajralarm.data.settings.DataStoreAppearancePreferencesRepository
 import io.github.sourcem7.alfajralarm.domain.CapabilityProbe
 import io.github.sourcem7.alfajralarm.domain.NextOccurrenceSelector
-import io.github.sourcem7.alfajralarm.domain.PreferencesProvider
+import io.github.sourcem7.alfajralarm.domain.CreateManualLocationUseCase
+import io.github.sourcem7.alfajralarm.domain.PreviewNextAlarmUseCase
+import io.github.sourcem7.alfajralarm.domain.SearchCitiesUseCase
+import io.github.sourcem7.alfajralarm.domain.SuggestFajrMethodUseCase
+import io.github.sourcem7.alfajralarm.ui.AlfajrViewModel
+import io.github.sourcem7.alfajralarm.ui.RingingViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 
 /** Manual dependency wiring. The application owns exactly one graph. */
 class AppGraph(context: Context) {
     private val appContext = context.applicationContext
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val preferencesRepository = AlarmPreferencesRepository(appContext)
-    val appearancePreferencesRepository = AppearancePreferencesRepository(appContext)
-    val alarmStateRepository = AlarmStateRepository(appContext)
-    val cityRepository = OfflineCityRepository(appContext)
-    val capabilityProbe: CapabilityProbe = AndroidCapabilityProbe(appContext)
-    val calculator = AdhanFajrCalculator()
+    private val preferencesRepository = DataStoreAlarmPreferencesRepository(appContext)
+    private val appearancePreferencesRepository = DataStoreAppearancePreferencesRepository(appContext)
+    private val alarmStateRepository = AlarmStateRepository(appContext)
+    private val cityRepository = OfflineCityRepository(appContext)
+    private val capabilityProbe: CapabilityProbe = AndroidCapabilityProbe(appContext)
+    private val calculator = AdhanFajrCalculator()
+    private val nextOccurrenceSelector = NextOccurrenceSelector(calculator)
 
-    private val preferencesProvider = PreferencesProvider { preferencesRepository.preferences.first() }
+    fun createAlfajrViewModel(): AlfajrViewModel = AlfajrViewModel(
+        preferences = preferencesRepository,
+        appearance = appearancePreferencesRepository,
+        alarmState = alarmStateRepository,
+        scheduler = scheduler,
+        capabilityProbe = capabilityProbe,
+        previewNextAlarm = PreviewNextAlarmUseCase(nextOccurrenceSelector),
+        searchCities = SearchCitiesUseCase(cityRepository),
+        createManualLocation = CreateManualLocationUseCase(),
+        suggestFajrMethod = SuggestFajrMethodUseCase(),
+        deviceZoneId = { kotlinx.datetime.TimeZone.currentSystemDefault().id },
+    )
 
-    val nextOccurrenceSelector = NextOccurrenceSelector(calculator)
+    fun createRingingViewModel(): RingingViewModel = RingingViewModel(ringing)
 
     val scheduler = AlarmSchedulingCoordinator(
-        preferences = preferencesProvider,
+        preferences = preferencesRepository,
         stateStore = alarmStateRepository,
         gateway = AndroidExactAlarmGateway(appContext),
         capabilities = capabilityProbe,
@@ -54,7 +70,7 @@ class AppGraph(context: Context) {
     val ringing = RingingController(
         scheduler = scheduler,
         stateStore = alarmStateRepository,
-        preferences = preferencesProvider,
+        preferences = preferencesRepository,
         audio = MediaPlayerAlarmAudio(appContext),
         vibration = DeviceAlarmVibration(appContext),
         wakeLock = PartialRingingWakeLock(appContext),

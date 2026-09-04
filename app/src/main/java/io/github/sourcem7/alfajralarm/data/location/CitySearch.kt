@@ -2,12 +2,13 @@ package io.github.sourcem7.alfajralarm.data.location
 
 import android.content.Context
 import io.github.sourcem7.alfajralarm.domain.FixedLocation
+import io.github.sourcem7.alfajralarm.domain.CityRepository
 import java.text.Normalizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-class OfflineCityRepository(private val context: Context) {
+class OfflineCityRepository(private val context: Context) : CityRepository {
     private val catalogue: Catalogue by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { loadCatalogue() }
 
     /**
@@ -17,7 +18,7 @@ class OfflineCityRepository(private val context: Context) {
      */
     suspend fun attribution(): CityAttribution = withContext(Dispatchers.Default) { catalogue.attribution }
 
-    suspend fun search(query: String, limit: Int = DEFAULT_LIMIT): List<FixedLocation> =
+    override suspend fun search(query: String, limit: Int): List<FixedLocation> =
         withContext(Dispatchers.Default) {
             val needle = CityNormalizer.normalize(query)
             if (needle.isBlank()) return@withContext emptyList()
@@ -60,7 +61,6 @@ class OfflineCityRepository(private val context: Context) {
 
     private companion object {
         const val CITY_ASSET = "cities.v1.json"
-        const val DEFAULT_LIMIT = 30
         const val MAX_LIMIT = 50
         val assetJson = Json { ignoreUnknownKeys = true }
     }
