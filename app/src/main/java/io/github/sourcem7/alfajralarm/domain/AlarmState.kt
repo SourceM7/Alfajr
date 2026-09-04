@@ -17,6 +17,10 @@ data class AlarmState(
     val testSessionId: String? = null,
     /** Counted separately so a test alarm never consumes daily snoozes. */
     val testSnoozeCount: Int = 0,
+    /** Last registered snooze trigger, so a redelivered broadcast cannot re-ring it. */
+    val snoozeAlarmEpochMillis: Long? = null,
+    /** Last registered test trigger, so a redelivered broadcast cannot re-ring it. */
+    val testAlarmEpochMillis: Long? = null,
     val lastOutcome: AlarmOutcome? = null,
     val lastOutcomeEpochMillis: Long? = null,
     val lastDeliveryEpochMillis: Long? = null,

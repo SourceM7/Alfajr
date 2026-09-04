@@ -27,6 +27,7 @@ import io.github.sourcem7.alfajralarm.domain.sessionKind
 import io.github.sourcem7.alfajralarm.domain.validateForPreview
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.IllegalTimeZoneException
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.util.UUID
@@ -63,6 +64,7 @@ class AlarmSchedulingCoordinator(
     override suspend fun disableDaily(): ScheduleResult = mutex.withLock {
         gateway.cancel(AlarmKind.DAILY)
         gateway.cancel(AlarmKind.SNOOZE)
+        gateway.cancel(AlarmKind.TEST)
         stateStore.update {
             it.copy(
                 dailyEnabled = false,
@@ -71,6 +73,10 @@ class AlarmSchedulingCoordinator(
                 skippedPrayerDate = null,
                 ringingSessionId = null,
                 snoozeCount = 0,
+                snoozeAlarmEpochMillis = null,
+                testSessionId = null,
+                testSnoozeCount = 0,
+                testAlarmEpochMillis = null,
             )
         }
         ScheduleResult.Disabled(DisabledReason.USER_DISABLED)
@@ -83,6 +89,10 @@ class AlarmSchedulingCoordinator(
     override suspend fun skipNext(): ScheduleResult = mutex.withLock {
         val state = stateStore.current()
         if (!state.dailyEnabled) return@withLock ScheduleResult.Disabled(DisabledReason.NOT_ENABLED)
+        // Only one skip is active at a time. Overwriting an existing skip with
+        // the newly selected date would un-exclude the first skipped date and
+        // reselect it, so a repeated skip only refreshes the schedule.
+        if (state.skippedPrayerDate != null) return@withLock scheduleNextLocked(clock())
         val now = clock()
         val skipped = state.nextPrayerDate ?: return@withLock scheduleNextLocked(now)
         stateStore.update {
@@ -110,6 +120,9 @@ class AlarmSchedulingCoordinator(
     override suspend fun scheduleSnooze(sessionId: String, minutes: Int): ScheduleResult = mutex.withLock {
         val state = stateStore.current()
         val session = state.sessionKind(sessionId) ?: return@withLock ScheduleResult.Disabled(DisabledReason.STALE_SESSION)
+        if (minutes !in MIN_SNOOZE_MINUTES..MAX_SNOOZE_MINUTES) {
+            return@withLock ScheduleResult.Disabled(DisabledReason.INVALID_SNOOZE_DURATION)
+        }
         // Each session counts its own snoozes so a test alarm neither consumes
         // nor is limited by the daily session's three.
         val used = if (session == SessionKind.TEST) state.testSnoozeCount else state.snoozeCount
@@ -123,9 +136,13 @@ class AlarmSchedulingCoordinator(
         stateStore.update {
             when (session) {
                 // A test session must never mutate the daily count or outcome.
-                SessionKind.TEST -> it.copy(testSnoozeCount = it.testSnoozeCount + 1)
+                SessionKind.TEST -> it.copy(
+                    testSnoozeCount = it.testSnoozeCount + 1,
+                    snoozeAlarmEpochMillis = trigger,
+                )
                 SessionKind.RINGING -> it.copy(
                     snoozeCount = it.snoozeCount + 1,
+                    snoozeAlarmEpochMillis = trigger,
                     lastOutcome = AlarmOutcome.SNOOZED,
                     lastOutcomeEpochMillis = now.toEpochMilliseconds(),
                 )
@@ -143,7 +160,13 @@ class AlarmSchedulingCoordinator(
         if (!gateway.scheduleExactWhileIdle(request)) {
             return@withLock ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED)
         }
-        stateStore.update { it.copy(testSessionId = sessionId, testSnoozeCount = 0) }
+        stateStore.update {
+            it.copy(
+                testSessionId = sessionId,
+                testSnoozeCount = 0,
+                testAlarmEpochMillis = trigger,
+            )
+        }
         ScheduleResult.TemporaryScheduled(AlarmKind.TEST, trigger)
     }
 
@@ -180,8 +203,13 @@ class AlarmSchedulingCoordinator(
             AlarmKind.SNOOZE -> {
                 // A snooze belongs to whichever session scheduled it, including
                 // a test session, so the test alarm exercises the real controls.
+                // The stored trigger rejects redelivered broadcasts; a null
+                // stored trigger accepts, so alarms scheduled before this guard
+                // existed still ring exactly once per session validation.
                 val sessionId = request.sessionId
                 val session = sessionId?.let(state::sessionKind) ?: return@withLock AlarmDelivery.Ignored
+                val expected = state.snoozeAlarmEpochMillis
+                if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
                 stateStore.update { it.copy(lastDeliveryEpochMillis = now.toEpochMilliseconds()) }
                 AlarmDelivery.Ring(
                     kind = AlarmKind.SNOOZE,
@@ -194,6 +222,8 @@ class AlarmSchedulingCoordinator(
             AlarmKind.TEST -> {
                 val sessionId = request.sessionId
                 if (sessionId == null || sessionId != state.testSessionId) return@withLock AlarmDelivery.Ignored
+                val expected = state.testAlarmEpochMillis
+                if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
                 stateStore.update { it.copy(lastDeliveryEpochMillis = now.toEpochMilliseconds()) }
                 AlarmDelivery.Ring(AlarmKind.TEST, sessionId, isTest = true, followingDaily = null)
             }
@@ -214,12 +244,22 @@ class AlarmSchedulingCoordinator(
             stateStore.update {
                 when (session) {
                     // A test session never changes the daily outcome or counters.
-                    SessionKind.TEST -> if (isTerminal) it.copy(testSessionId = null, testSnoozeCount = 0) else it
+                    SessionKind.TEST -> if (isTerminal) {
+                        it.copy(
+                            testSessionId = null,
+                            testSnoozeCount = 0,
+                            testAlarmEpochMillis = null,
+                            snoozeAlarmEpochMillis = null,
+                        )
+                    } else {
+                        it
+                    }
                     SessionKind.RINGING -> it.copy(
                         lastOutcome = outcome,
                         lastOutcomeEpochMillis = clock().toEpochMilliseconds(),
                         ringingSessionId = if (isTerminal) null else it.ringingSessionId,
                         snoozeCount = if (isTerminal) 0 else it.snoozeCount,
+                        snoozeAlarmEpochMillis = if (isTerminal) null else it.snoozeAlarmEpochMillis,
                     )
                 }
             }
@@ -265,9 +305,15 @@ class AlarmSchedulingCoordinator(
         }
         val occurrence = runCatching {
             selector.selectNext(from, loaded, state.skippedPrayerDate)
-        }.getOrElse {
+        }.getOrElse { error ->
             clearRegisteredAlarm()
-            return ScheduleResult.InvalidConfiguration(PreferenceError.INVALID_TIME_ZONE)
+            // Only a zone failure means the time zone is wrong. Range and
+            // search failures are scheduling problems with a different fix.
+            return if (error is IllegalTimeZoneException || error is java.time.DateTimeException) {
+                ScheduleResult.InvalidConfiguration(PreferenceError.INVALID_TIME_ZONE)
+            } else {
+                ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED)
+            }
         }
         val triggerAtMillis = occurrence.alarmInstant.toEpochMilliseconds()
         // Cancel before replacing so a settings change cannot leave two alarms.
@@ -314,5 +360,7 @@ class AlarmSchedulingCoordinator(
 
     companion object {
         val TEST_ALARM_DELAY: Duration = 10.seconds
+        const val MIN_SNOOZE_MINUTES = 1
+        const val MAX_SNOOZE_MINUTES = 120
     }
 }

@@ -56,6 +56,7 @@ enum class DisabledReason {
     USER_DISABLED,
     STALE_SESSION,
     SNOOZE_LIMIT_REACHED,
+    INVALID_SNOOZE_DURATION,
 }
 
 /** What a delivered alarm intent means once stale duplicates are rejected. */

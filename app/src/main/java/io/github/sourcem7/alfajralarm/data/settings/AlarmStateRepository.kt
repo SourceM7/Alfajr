@@ -38,6 +38,8 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
         snoozeCount = this[SNOOZE_COUNT] ?: 0,
         testSessionId = this[TEST_SESSION_ID],
         testSnoozeCount = this[TEST_SNOOZE_COUNT] ?: 0,
+        snoozeAlarmEpochMillis = this[SNOOZE_ALARM_MILLIS],
+        testAlarmEpochMillis = this[TEST_ALARM_MILLIS],
         lastOutcome = this[LAST_OUTCOME]?.let { runCatching { AlarmOutcome.valueOf(it) }.getOrNull() },
         lastOutcomeEpochMillis = this[LAST_OUTCOME_MILLIS],
         lastDeliveryEpochMillis = this[LAST_DELIVERY_MILLIS],
@@ -54,6 +56,8 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
         setOrRemove(SKIPPED_PRAYER_DATE, state.skippedPrayerDate?.toString())
         setOrRemove(RINGING_SESSION_ID, state.ringingSessionId)
         setOrRemove(TEST_SESSION_ID, state.testSessionId)
+        setOrRemove(SNOOZE_ALARM_MILLIS, state.snoozeAlarmEpochMillis)
+        setOrRemove(TEST_ALARM_MILLIS, state.testAlarmEpochMillis)
         setOrRemove(LAST_OUTCOME, state.lastOutcome?.name)
         setOrRemove(LAST_OUTCOME_MILLIS, state.lastOutcomeEpochMillis)
         setOrRemove(LAST_DELIVERY_MILLIS, state.lastDeliveryEpochMillis)
@@ -74,6 +78,8 @@ class AlarmStateRepository(private val context: Context) : AlarmStateStore {
         val SNOOZE_COUNT = intPreferencesKey("snooze_count")
         val TEST_SESSION_ID = stringPreferencesKey("test_session_id")
         val TEST_SNOOZE_COUNT = intPreferencesKey("test_snooze_count")
+        val SNOOZE_ALARM_MILLIS = longPreferencesKey("snooze_alarm_millis")
+        val TEST_ALARM_MILLIS = longPreferencesKey("test_alarm_millis")
         val LAST_OUTCOME = stringPreferencesKey("last_outcome")
         val LAST_OUTCOME_MILLIS = longPreferencesKey("last_outcome_millis")
         val LAST_DELIVERY_MILLIS = longPreferencesKey("last_delivery_millis")

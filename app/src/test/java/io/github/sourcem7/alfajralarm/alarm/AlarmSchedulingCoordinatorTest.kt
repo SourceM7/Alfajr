@@ -199,6 +199,87 @@ class AlarmSchedulingCoordinatorTest {
         assertEquals(tomorrowsAlarm.toEpochMilliseconds(), gateway.registered[AlarmKind.DAILY])
     }
 
+    @Test fun `a repeated skip keeps the first skipped date excluded`() = runBlocking {
+        coordinator.enableDaily()
+        coordinator.skipNext()
+        assertEquals(today, stateStore.current().skippedPrayerDate)
+
+        coordinator.skipNext()
+
+        assertEquals(today, stateStore.current().skippedPrayerDate)
+        assertEquals(tomorrowsAlarm.toEpochMilliseconds(), gateway.registered[AlarmKind.DAILY])
+        assertEquals(tomorrow, stateStore.current().nextPrayerDate)
+    }
+
+    @Test fun `disabling cancels a scheduled test alarm and clears its session`() = runBlocking {
+        coordinator.enableDaily()
+        coordinator.scheduleTest()
+        assertTrue(gateway.registered.containsKey(AlarmKind.TEST))
+
+        val result = coordinator.disableDaily()
+
+        assertEquals(ScheduleResult.Disabled(DisabledReason.USER_DISABLED), result)
+        assertTrue(gateway.registered.isEmpty())
+        assertNull(stateStore.current().testSessionId)
+        assertNull(stateStore.current().testAlarmEpochMillis)
+        assertNull(stateStore.current().snoozeAlarmEpochMillis)
+    }
+
+    @Test fun `a redelivered snooze with a stale trigger is ignored`() = runBlocking {
+        coordinator.enableDaily()
+        stateStore.update { it.copy(ringingSessionId = "ringing") }
+        coordinator.scheduleSnooze("ringing", 5)
+        val trigger = gateway.registered.getValue(AlarmKind.SNOOZE)
+
+        val first = coordinator.onAlarmDelivered(AlarmRequest(AlarmKind.SNOOZE, trigger, sessionId = "ringing"))
+        val redelivery = coordinator.onAlarmDelivered(
+            AlarmRequest(AlarmKind.SNOOZE, trigger - 60_000, sessionId = "ringing"),
+        )
+
+        assertTrue(first is AlarmDelivery.Ring)
+        assertEquals(AlarmDelivery.Ignored, redelivery)
+    }
+
+    @Test fun `a redelivered test alarm with a stale trigger is ignored`() = runBlocking {
+        coordinator.enableDaily()
+        coordinator.scheduleTest()
+        val sessionId = checkNotNull(stateStore.current().testSessionId)
+        val trigger = gateway.registered.getValue(AlarmKind.TEST)
+
+        val first = coordinator.onAlarmDelivered(AlarmRequest(AlarmKind.TEST, trigger, sessionId = sessionId))
+        val redelivery = coordinator.onAlarmDelivered(
+            AlarmRequest(AlarmKind.TEST, trigger - 60_000, sessionId = sessionId),
+        )
+
+        assertTrue(first is AlarmDelivery.Ring)
+        assertEquals(AlarmDelivery.Ignored, redelivery)
+    }
+
+    @Test fun `a snooze with a non-positive duration is rejected`() = runBlocking {
+        coordinator.enableDaily()
+        stateStore.update { it.copy(ringingSessionId = "ringing") }
+
+        assertEquals(
+            ScheduleResult.Disabled(DisabledReason.INVALID_SNOOZE_DURATION),
+            coordinator.scheduleSnooze("ringing", 0),
+        )
+        assertEquals(
+            ScheduleResult.Disabled(DisabledReason.INVALID_SNOOZE_DURATION),
+            coordinator.scheduleSnooze("ringing", -5),
+        )
+        assertNull(gateway.registered[AlarmKind.SNOOZE])
+    }
+
+    @Test fun `an out-of-range correction reports scheduling failure instead of a bad time zone`() = runBlocking {
+        stateStore.update { it.copy(dailyEnabled = true) }
+        preferences = testPreferences(correction = 31)
+
+        val result = coordinator.scheduleNext(ScheduleReason.AppOpened)
+
+        assertEquals(ScheduleResult.ActionRequired(CapabilityProblem.SCHEDULING_FAILED), result)
+        assertFalse(stateStore.current().claimsActiveAlarm)
+    }
+
     @Test fun `disabling cancels the daily alarm and drops the active claim`() = runBlocking {
         coordinator.enableDaily()
 
@@ -248,7 +329,10 @@ class AlarmSchedulingCoordinatorTest {
         val after = stateStore.current()
         assertTrue(result is ScheduleResult.TemporaryScheduled)
         assertNotNull(after.testSessionId)
-        assertEquals(before.copy(testSessionId = after.testSessionId), after)
+        assertEquals(
+            before.copy(testSessionId = after.testSessionId, testAlarmEpochMillis = after.testAlarmEpochMillis),
+            after,
+        )
         assertEquals(tomorrowsAlarm.toEpochMilliseconds(), gateway.registered[AlarmKind.DAILY])
         assertTrue(gateway.interactions.any { it.startsWith("whileIdle:${AlarmKind.TEST}") })
     }

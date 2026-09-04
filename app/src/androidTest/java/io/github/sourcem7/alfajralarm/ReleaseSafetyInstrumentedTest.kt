@@ -14,14 +14,16 @@ import org.xmlpull.v1.XmlPullParser
 
 @RunWith(AndroidJUnit4::class)
 class ReleaseSafetyInstrumentedTest {
+    // Method names must not contain spaces: androidTest methods are dexed and
+    // D8 rejects spaces in method names below DEX version 040 (minSdk 26).
     @Test
-    fun `application ID matches the configured package`() {
+    fun applicationIdMatchesTheConfiguredPackage() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("io.github.sourcem7.alfajralarm", appContext.packageName)
     }
 
     @Test
-    fun `release package requests no internet location or storage permission`() {
+    fun releasePackageRequestsNoInternetLocationOrStoragePermission() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         @Suppress("DEPRECATION")
         val requestedPermissions = context.packageManager.getPackageInfo(
@@ -43,7 +45,7 @@ class ReleaseSafetyInstrumentedTest {
     }
 
     @Test
-    fun `backup rules exclude device local alarm state`() {
+    fun backupRulesExcludeDeviceLocalAlarmState() {
         val resources = InstrumentationRegistry.getInstrumentation().targetContext.resources
         val expectedPath = "datastore/alarm_state.preferences_pb"
 
@@ -58,7 +60,7 @@ class ReleaseSafetyInstrumentedTest {
     }
 
     @Test
-    fun `main activity survives process configuration recreation`() {
+    fun mainActivitySurvivesProcessConfigurationRecreation() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.recreate()
             scenario.onActivity { activity ->
