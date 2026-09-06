@@ -96,6 +96,11 @@ class AlfajrViewModel(
     }
 
     fun onAppResumed() {
+        // Returning from system settings (exact alarms, full-screen intent,
+        // notifications) is the recovery path: re-read capabilities so the
+        // onboarding gate and status UI pick up grants immediately instead of
+        // serving the stale probe read cached in uiState.
+        refreshCapabilities()
         viewModelScope.launch { scheduler.scheduleNext(ScheduleReason.AppOpened) }
     }
 
