@@ -83,4 +83,11 @@
     <string name="test_alarm_scheduled">Test alarm scheduled. It will ring in ten seconds.</string>
     <string name="setup_step">Step %1$d of %2$d</string>
     <string name="content_description_open_settings">Open settings</string>
+    <string name="content_description_back">Back</string>
+    <string name="action_skip">Skip</string>
+    <string name="settings_section_prayer">Prayer</string>
+    <string name="settings_section_alarm">Alarm</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="home_last_outcome">Last alarm: %1$s</string>
+    <string name="home_view_details">Details</string>
 </resources>
