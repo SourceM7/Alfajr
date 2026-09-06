@@ -218,16 +218,17 @@ private fun formatTime(millis: Long): String =
     android.text.format.DateFormat.getTimeFormat(LocalContext.current).format(Date(millis))
 
 /**
- * A near-black palette. The ringing screen ignores the light/dark setting
- * because it is meant to be readable in a dark room without flooding it.
+ * A tranquil near-black dawn palette with gentle sage-green accents.
+ * The ringing screen ignores the light/dark setting because it is
+ * meant to be readable in a dark room without flooding it with harsh light.
  */
 private fun ringingColors() = darkColorScheme(
-    background = Color(0xFF05060A),
-    surface = Color(0xFF05060A),
-    onBackground = Color(0xFFE7E2D9),
-    onSurface = Color(0xFFE7E2D9),
-    primary = Color(0xFF8FB3D9),
-    onPrimary = Color(0xFF06131F),
-    secondaryContainer = Color(0xFF23262E),
-    onSecondaryContainer = Color(0xFFE7E2D9),
+    background = Color(0xFF070B08),
+    surface = Color(0xFF070B08),
+    onBackground = Color(0xFFDFE4DD),
+    onSurface = Color(0xFFDFE4DD),
+    primary = Color(0xFF8BD6A3),
+    onPrimary = Color(0xFF00391F),
+    secondaryContainer = Color(0xFF1B251F),
+    onSecondaryContainer = Color(0xFFDFE4DD),
 )

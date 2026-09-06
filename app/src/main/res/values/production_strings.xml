@@ -90,4 +90,15 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="home_last_outcome">Last alarm: %1$s</string>
     <string name="home_view_details">Details</string>
+    <string name="action_clear">Clear</string>
+    <string name="badge_suggested">Suggested</string>
+    <string name="welcome_feature_offline_title">Completely Offline</string>
+    <string name="welcome_feature_offline_desc">No internet connection, user accounts, or external services.</string>
+    <string name="welcome_feature_privacy_title">Zero Telemetry &amp; Tracking</string>
+    <string name="welcome_feature_privacy_desc">No analytics, no advertising, and no background location tracking.</string>
+    <string name="welcome_feature_exact_title">Accurate &amp; Precise</string>
+    <string name="welcome_feature_exact_desc">Astronomical calculations based on authoritative prayer standards.</string>
+    <string name="hero_next_fajr">Next Fajr</string>
+    <string name="hero_alarm_scheduled">Alarm set</string>
+    <string name="hero_alarm_off">Alarm off</string>
 </resources>
