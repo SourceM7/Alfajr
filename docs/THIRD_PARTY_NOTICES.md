@@ -51,7 +51,7 @@ decision.
 | [Adhan (adhan2)](https://github.com/batoulapps/adhan-kotlin) | MIT |
 | Kotlin standard library, `kotlinx.datetime`, `kotlinx.serialization` | Apache 2.0 |
 | AndroidX (Activity, Core, DataStore, Lifecycle, Navigation) | Apache 2.0 |
-| Jetpack Compose and Material 3 | Apache 2.0 |
+| Jetpack Compose, Material 3, and the Google Material Symbol `wb_twilight` used for the launcher icon | Apache 2.0 |
 | JUnit 4 | Eclipse Public License 1.0 |
 | AndroidX Test and Espresso | Apache 2.0 |
 
