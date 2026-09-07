@@ -240,6 +240,18 @@ class AlarmSchedulingCoordinatorTest {
         assertEquals(AlarmDelivery.Ignored, redelivery)
     }
 
+    @Test fun `an identical snooze redelivery is ignored after its first delivery`() = runBlocking {
+        coordinator.enableDaily()
+        stateStore.update { it.copy(ringingSessionId = "ringing") }
+        coordinator.scheduleSnooze("ringing", 5)
+        val trigger = gateway.registered.getValue(AlarmKind.SNOOZE)
+        val request = AlarmRequest(AlarmKind.SNOOZE, trigger, sessionId = "ringing")
+
+        assertTrue(coordinator.onAlarmDelivered(request) is AlarmDelivery.Ring)
+        assertEquals(AlarmDelivery.Ignored, coordinator.onAlarmDelivered(request))
+        assertNull(stateStore.current().snoozeAlarmEpochMillis)
+    }
+
     @Test fun `a redelivered test alarm with a stale trigger is ignored`() = runBlocking {
         coordinator.enableDaily()
         coordinator.scheduleTest()
@@ -253,6 +265,18 @@ class AlarmSchedulingCoordinatorTest {
 
         assertTrue(first is AlarmDelivery.Ring)
         assertEquals(AlarmDelivery.Ignored, redelivery)
+    }
+
+    @Test fun `an identical test redelivery is ignored after its first delivery`() = runBlocking {
+        coordinator.enableDaily()
+        coordinator.scheduleTest()
+        val sessionId = checkNotNull(stateStore.current().testSessionId)
+        val trigger = gateway.registered.getValue(AlarmKind.TEST)
+        val request = AlarmRequest(AlarmKind.TEST, trigger, sessionId = sessionId)
+
+        assertTrue(coordinator.onAlarmDelivered(request) is AlarmDelivery.Ring)
+        assertEquals(AlarmDelivery.Ignored, coordinator.onAlarmDelivered(request))
+        assertNull(stateStore.current().testAlarmEpochMillis)
     }
 
     @Test fun `a snooze with a non-positive duration is rejected`() = runBlocking {

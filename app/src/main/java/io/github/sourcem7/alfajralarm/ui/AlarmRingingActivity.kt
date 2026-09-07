@@ -8,6 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
@@ -16,6 +19,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sourcem7.alfajralarm.alarm.AlarmIntents
 import io.github.sourcem7.alfajralarm.alarm.AlarmRingingService
 import io.github.sourcem7.alfajralarm.app.AppGraph
+import kotlinx.coroutines.delay
+
+private const val SESSION_START_GRACE_MILLIS = 2_000L
 
 /**
  * The full-screen alarm. Android starts it from the ringing notification's
@@ -39,9 +45,20 @@ class AlarmRingingActivity : ComponentActivity() {
         showOverLockScreen()
         setContent {
             val session by viewModel.session.collectAsStateWithLifecycle()
+            var observedSession by remember { mutableStateOf(false) }
             // The session ends in the service; the screen follows it rather
-            // than deciding for itself when the alarm is over.
-            LaunchedEffect(session) { if (session == null) finish() }
+            // than deciding for itself when the alarm is over. A foreground
+            // notification can launch this activity just before its service
+            // finishes creating the session, so an initial null is not yet an
+            // ended alarm.
+            LaunchedEffect(session) {
+                if (session != null) observedSession = true
+                else if (observedSession) finish()
+            }
+            LaunchedEffect(Unit) {
+                delay(SESSION_START_GRACE_MILLIS)
+                if (viewModel.session.value == null) finish()
+            }
             session?.let { active ->
                 RingingScreen(
                     session = active,

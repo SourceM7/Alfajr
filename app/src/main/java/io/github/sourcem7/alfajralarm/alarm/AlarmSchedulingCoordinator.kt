@@ -203,14 +203,21 @@ class AlarmSchedulingCoordinator(
             AlarmKind.SNOOZE -> {
                 // A snooze belongs to whichever session scheduled it, including
                 // a test session, so the test alarm exercises the real controls.
-                // The stored trigger rejects redelivered broadcasts; a null
-                // stored trigger accepts, so alarms scheduled before this guard
-                // existed still ring exactly once per session validation.
+                // Consume the trigger as part of accepting its delivery. The
+                // session itself stays alive for a later snooze, but this
+                // particular AlarmManager broadcast must never ring twice.
+                // A null stored trigger accepts alarms scheduled before this
+                // guard existed once per session validation.
                 val sessionId = request.sessionId
                 val session = sessionId?.let(state::sessionKind) ?: return@withLock AlarmDelivery.Ignored
                 val expected = state.snoozeAlarmEpochMillis
                 if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
-                stateStore.update { it.copy(lastDeliveryEpochMillis = now.toEpochMilliseconds()) }
+                stateStore.update {
+                    it.copy(
+                        snoozeAlarmEpochMillis = null,
+                        lastDeliveryEpochMillis = now.toEpochMilliseconds(),
+                    )
+                }
                 AlarmDelivery.Ring(
                     kind = AlarmKind.SNOOZE,
                     sessionId = sessionId,
@@ -224,7 +231,15 @@ class AlarmSchedulingCoordinator(
                 if (sessionId == null || sessionId != state.testSessionId) return@withLock AlarmDelivery.Ignored
                 val expected = state.testAlarmEpochMillis
                 if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
-                stateStore.update { it.copy(lastDeliveryEpochMillis = now.toEpochMilliseconds()) }
+                // As with snoozes, a test request represents one delivery.
+                // Keep its session for ringing controls, but consume this
+                // trigger so an identical redelivery is stale.
+                stateStore.update {
+                    it.copy(
+                        testAlarmEpochMillis = null,
+                        lastDeliveryEpochMillis = now.toEpochMilliseconds(),
+                    )
+                }
                 AlarmDelivery.Ring(AlarmKind.TEST, sessionId, isTest = true, followingDaily = null)
             }
         }
