@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,23 +75,43 @@ fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = stringResource(
-                        if (session.isTest) R.string.ringing_title_test else R.string.ringing_title_daily,
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = formatTime(session.alarmAt.toEpochMilliseconds()),
-                    fontSize = 72.sp,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.displayLarge,
-                )
+                RingingHeader(session)
                 RingtoneNotice(session.ringtoneSource)
                 SnoozeControl(session, onSnooze)
                 DismissControl(session, onDismiss)
             }
+        }
+    }
+}
+
+@Composable
+private fun RingingHeader(session: RingingSession) {
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(
+                    if (session.isTest) R.string.ringing_title_test else R.string.ringing_title_daily,
+                ),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = formatTime(session.alarmAt.toEpochMilliseconds()),
+                fontSize = 72.sp,
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -204,12 +225,32 @@ private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
 
 @Composable
 private fun RingtoneNotice(source: RingtoneSource?) {
-    val notice = when (source) {
-        RingtoneSource.BUNDLED -> stringResource(R.string.ringing_source_bundled)
-        null -> stringResource(R.string.ringing_source_none)
+    val (notice, containerColor, contentColor) = when (source) {
+        RingtoneSource.BUNDLED -> Triple(
+            stringResource(R.string.ringing_source_bundled),
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+            MaterialTheme.colorScheme.onSurface,
+        )
+        null -> Triple(
+            stringResource(R.string.ringing_source_none),
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer,
+        )
         else -> return
     }
-    Text(notice, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            notice,
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 /** Respects the device's own 12/24-hour setting. */
@@ -231,4 +272,8 @@ private fun ringingColors() = darkColorScheme(
     onPrimary = Color(0xFF00391F),
     secondaryContainer = Color(0xFF1B251F),
     onSecondaryContainer = Color(0xFFDFE4DD),
+    surfaceContainerLow = Color(0xFF111914),
+    surfaceContainerHigh = Color(0xFF1B251F),
+    errorContainer = Color(0xFF5C201B),
+    onErrorContainer = Color(0xFFFFDAD6),
 )

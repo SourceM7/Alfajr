@@ -34,6 +34,9 @@
     <string name="status_disabled">Not scheduled</string>
     <string name="action_enable_daily">Enable daily Fajr alarm</string>
     <string name="action_disable_daily">Turn off daily alarm</string>
+    <string name="disable_daily_alarm_title">Turn off the daily Fajr alarm?</string>
+    <string name="disable_daily_alarm_body">Tomorrow’s alarm will not ring. Your location and calculation settings will be kept.</string>
+    <string name="action_keep_alarm">Keep alarm on</string>
     <string name="location_title">Choose a fixed location</string>
     <string name="location_body">Your selected city and its time zone stay authoritative, even when you travel.</string>
     <string name="city_results_empty">No matching city. Try a different spelling or enter coordinates below.</string>

@@ -47,8 +47,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -104,6 +106,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -314,12 +317,20 @@ private fun rememberCapabilityResolver(viewModel: AlfajrViewModel): (CapabilityP
 
 @Composable
 private fun CenteredContent(content: @Composable () -> Unit) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val horizontalPadding = if (screenWidth >= 600) MdSpacing.md else MdSpacing.sm
+    val maxContentWidth = when {
+        screenWidth >= 1_200 -> 960.dp
+        screenWidth >= 600 -> 720.dp
+        else -> 600.dp
+    }
+
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 600.dp)
-                .padding(horizontal = MdSpacing.sm),
+                .widthIn(max = maxContentWidth)
+                .padding(horizontal = horizontalPadding),
         ) {
             content()
         }
@@ -380,6 +391,7 @@ private fun HomeScreen(
     val snackbar = remember { SnackbarHostState() }
     val resolve = rememberCapabilityResolver(viewModel)
     var statusSheetOpen by remember { mutableStateOf(false) }
+    var showDisableConfirmation by rememberSaveable { mutableStateOf(false) }
     val issues = problems.size
 
     Scaffold(
@@ -443,9 +455,13 @@ private fun HomeScreen(
                         DailyAlarmToggleCard(
                             enabled = state.dailyEnabled,
                             onToggle = { enabled ->
-                                scope.launch {
-                                    val result = viewModel.setDailyEnabled(enabled)
-                                    snackbar.showSnackbar(result.userMessage(context))
+                                if (enabled) {
+                                    scope.launch {
+                                        val result = viewModel.setDailyEnabled(true)
+                                        snackbar.showSnackbar(result.userMessage(context))
+                                    }
+                                } else {
+                                    showDisableConfirmation = true
                                 }
                             },
                         )
@@ -532,6 +548,42 @@ private fun HomeScreen(
                 Spacer(Modifier.height(MdSpacing.md))
             }
         }
+    }
+
+    if (showDisableConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDisableConfirmation = false },
+            title = {
+                Text(
+                    stringResource(R.string.disable_daily_alarm_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            },
+            text = {
+                Text(
+                    stringResource(R.string.disable_daily_alarm_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDisableConfirmation = false
+                        scope.launch {
+                            val result = viewModel.setDailyEnabled(false)
+                            snackbar.showSnackbar(result.userMessage(context))
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.action_disable_daily))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableConfirmation = false }) {
+                    Text(stringResource(R.string.action_keep_alarm))
+                }
+            },
+        )
     }
 }
 
@@ -728,6 +780,7 @@ private fun DailyAlarmToggleCard(
     onToggle: (Boolean) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    val cardShape = MaterialTheme.shapes.large
     val containerColor by animateColorAsState(
         targetValue = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -742,12 +795,16 @@ private fun DailyAlarmToggleCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onToggle(!enabled)
-            },
-        shape = RoundedCornerShape(20.dp),
+            .clip(cardShape)
+            .toggleable(
+                value = enabled,
+                role = Role.Switch,
+                onValueChange = { checked ->
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onToggle(checked)
+                },
+            ),
+        shape = cardShape,
         colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Row(
@@ -797,10 +854,7 @@ private fun DailyAlarmToggleCard(
 
             Switch(
                 checked = enabled,
-                onCheckedChange = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onToggle(it)
-                },
+                onCheckedChange = null,
                 thumbContent = if (enabled) {
                     {
                         Icon(
