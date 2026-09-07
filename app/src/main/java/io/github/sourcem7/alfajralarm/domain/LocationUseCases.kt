@@ -4,6 +4,8 @@ class SearchCitiesUseCase(private val repository: CityRepository) {
     suspend operator fun invoke(query: String): List<FixedLocation> =
         if (query.isBlank()) emptyList() else repository.search(query, DEFAULT_LIMIT)
 
+    suspend fun warmUp() = repository.warmUp()
+
     private companion object {
         const val DEFAULT_LIMIT = 30
     }

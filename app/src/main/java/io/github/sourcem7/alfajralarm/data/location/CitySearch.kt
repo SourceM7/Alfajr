@@ -18,22 +18,17 @@ class OfflineCityRepository(private val context: Context) : CityRepository {
      */
     suspend fun attribution(): CityAttribution = withContext(Dispatchers.Default) { catalogue.attribution }
 
+    override suspend fun warmUp() {
+        withContext(Dispatchers.Default) { catalogue.index }
+    }
+
     override suspend fun search(query: String, limit: Int): List<FixedLocation> =
-        withContext(Dispatchers.Default) {
-            val needle = CityNormalizer.normalize(query)
-            if (needle.isBlank()) return@withContext emptyList()
-            catalogue.cities.asSequence()
-                .mapNotNull { city -> city.matchScore(needle)?.let { score -> score to city } }
-                .sortedWith(compareBy<Pair<Int, IndexedCity>> { it.first }.thenByDescending { it.second.record.population }.thenBy { it.second.record.name })
-                .take(limit.coerceIn(1, MAX_LIMIT))
-                .map { it.second.record.toLocation() }
-                .toList()
-        }
+        withContext(Dispatchers.Default) { catalogue.index.search(query, limit) }
 
     private fun loadCatalogue(): Catalogue = context.assets.open(CITY_ASSET).bufferedReader().use { reader ->
         val asset = assetJson.decodeFromString<CityAsset>(reader.readText())
         Catalogue(
-            cities = asset.cities.map(::IndexedCity),
+            index = CitySearchIndex(asset.cities),
             attribution = CityAttribution(
                 notice = asset.attribution,
                 license = asset.license,
@@ -43,11 +38,69 @@ class OfflineCityRepository(private val context: Context) : CityRepository {
         )
     }
 
-    private class Catalogue(val cities: List<IndexedCity>, val attribution: CityAttribution)
+    private class Catalogue(val index: CitySearchIndex, val attribution: CityAttribution)
+
+    private companion object {
+        const val CITY_ASSET = "cities.v1.json"
+        const val MAX_LIMIT = 50
+        val assetJson = Json { ignoreUnknownKeys = true }
+    }
+}
+
+/**
+ * Keeps city search fast after the one-time asset load. The normalized names
+ * are sorted once, so usual prefix searches visit only matching cities instead
+ * of sorting the entire worldwide catalogue for every character typed.
+ */
+internal class CitySearchIndex(records: List<CityRecord>) {
+    private val cities = records.map(::IndexedCity)
+    private val names = cities.flatMap { city ->
+        city.names.map { name -> IndexedName(name, city) }
+    }.sortedBy(IndexedName::name)
+
+    fun search(query: String, limit: Int): List<FixedLocation> {
+        val needle = CityNormalizer.normalize(query)
+        if (needle.isBlank()) return emptyList()
+
+        val boundedLimit = limit.coerceIn(1, MAX_LIMIT)
+        val prefixMatches = prefixMatches(needle)
+        val matches = if (prefixMatches.isNotEmpty()) {
+            prefixMatches
+        } else {
+            // Preserve a useful fallback for a remembered middle fragment
+            // without making it the cost paid on each normal city search.
+            cities.mapNotNull { city -> city.matchScore(needle)?.let { score -> score to city } }
+        }
+        return matches
+            .sortedWith(cityMatchOrder)
+            .take(boundedLimit)
+            .map { it.second.record.toLocation() }
+    }
+
+    private fun prefixMatches(query: String): List<Pair<Int, IndexedCity>> {
+        val matches = LinkedHashSet<IndexedCity>()
+        var index = names.lowerBound(query)
+        while (index < names.size && names[index].name.startsWith(query)) {
+            matches += names[index].city
+            index++
+        }
+        return matches.mapNotNull { city -> city.matchScore(query)?.let { score -> score to city } }
+    }
+
+    private fun List<IndexedName>.lowerBound(query: String): Int {
+        var low = 0
+        var high = size
+        while (low < high) {
+            val middle = (low + high) ushr 1
+            if (this[middle].name < query) low = middle + 1 else high = middle
+        }
+        return low
+    }
 
     private class IndexedCity(val record: CityRecord) {
-        private val names = listOfNotNull(record.name, record.asciiName, record.arabicName)
-            .map(CityNormalizer::normalize).distinct()
+        val names = listOfNotNull(record.name, record.asciiName, record.arabicName)
+            .map(CityNormalizer::normalize)
+            .distinct()
 
         fun matchScore(query: String): Int? = names.minOfOrNull { name ->
             when {
@@ -59,10 +112,13 @@ class OfflineCityRepository(private val context: Context) : CityRepository {
         }?.takeIf { it != Int.MAX_VALUE }
     }
 
+    private data class IndexedName(val name: String, val city: IndexedCity)
+
     private companion object {
-        const val CITY_ASSET = "cities.v1.json"
         const val MAX_LIMIT = 50
-        val assetJson = Json { ignoreUnknownKeys = true }
+        val cityMatchOrder = compareBy<Pair<Int, IndexedCity>> { it.first }
+            .thenByDescending { it.second.record.population }
+            .thenBy { it.second.record.name }
     }
 }
 

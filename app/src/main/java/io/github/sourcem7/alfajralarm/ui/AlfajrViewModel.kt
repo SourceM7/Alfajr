@@ -58,6 +58,7 @@ class AlfajrViewModel(
     private val capabilityRefresh = MutableStateFlow(0)
     private val mutableCityResults = MutableStateFlow<List<FixedLocation>>(emptyList())
     private var citySearchJob: Job? = null
+    private var cityCatalogueWarmUpJob: Job? = null
 
     val uiState: StateFlow<AlfajrUiState> = combine(
         preferences.preferences,
@@ -116,6 +117,11 @@ class AlfajrViewModel(
         }
     }
 
+    fun prepareCitySearch() {
+        if (cityCatalogueWarmUpJob != null) return
+        cityCatalogueWarmUpJob = viewModelScope.launch { searchCities.warmUp() }
+    }
+
     fun selectLocation(location: FixedLocation) = launchUpdate { preferences.updateLocation(location) }
 
     fun saveManualLocation(latitude: String, longitude: String, zoneId: String): ManualLocationResult {
@@ -147,6 +153,6 @@ class AlfajrViewModel(
     }
 
     private companion object {
-        const val CITY_SEARCH_DEBOUNCE_MILLIS = 200L
+        const val CITY_SEARCH_DEBOUNCE_MILLIS = 120L
     }
 }

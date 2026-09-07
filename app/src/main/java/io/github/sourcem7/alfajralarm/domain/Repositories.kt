@@ -25,4 +25,7 @@ interface AppearancePreferencesStore {
 /** Search boundary for the bundled, offline city catalogue. */
 fun interface CityRepository {
     suspend fun search(query: String, limit: Int): List<FixedLocation>
+
+    /** Starts the offline catalogue load before the user begins typing. */
+    suspend fun warmUp() = Unit
 }

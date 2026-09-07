@@ -97,6 +97,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -1483,6 +1484,7 @@ private fun LocationContent(
     var zoneId by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<PreferenceError?>(null) }
 
+    LaunchedEffect(Unit) { viewModel.prepareCitySearch() }
     LaunchedEffect(query) { viewModel.search(query) }
 
     LazyColumn(
@@ -1678,7 +1680,10 @@ private fun MethodContent(
     preferences: AlarmPreferences,
     onConfirmed: () -> Unit,
 ) {
-    var candidate by remember(preferences.method) { mutableStateOf(preferences.method) }
+    val suggestedMethod = preferences.location?.countryCode?.let(viewModel::suggestedMethod)
+    var candidate by remember(preferences.method, suggestedMethod) {
+        mutableStateOf(preferences.method ?: suggestedMethod)
+    }
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
@@ -1694,7 +1699,7 @@ private fun MethodContent(
         }
 
         preferences.location?.let { location ->
-            val suggestion = viewModel.suggestedMethod(location.countryCode)
+            val suggestion = suggestedMethod ?: return@let
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -1725,21 +1730,36 @@ private fun MethodContent(
             }
         }
 
-        items(FajrMethod.entries.toList()) { method ->
+        items(FajrMethod.entries.toList().sortedByDescending { it == suggestedMethod }) { method ->
             val isSelected = method == candidate
-            val isSuggested = preferences.location?.countryCode?.let {
-                viewModel.suggestedMethod(it) == method
-            } ?: false
+            val isSuggested = method == suggestedMethod
+            val emphasis by animateFloatAsState(
+                targetValue = if (suggestedMethod == null || isSuggested) 1f else 0.68f,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                label = "methodRecommendationEmphasis",
+            )
+            val containerColor by animateColorAsState(
+                targetValue = when {
+                    isSuggested -> MaterialTheme.colorScheme.primaryContainer
+                    isSelected -> MaterialTheme.colorScheme.secondaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceContainerLow
+                },
+                label = "methodRecommendationContainer",
+            )
 
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = containerColor,
                 ),
-                border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                border = when {
+                    isSuggested -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                    isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
+                    else -> null
+                },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .alpha(emphasis)
                     .clickable { candidate = method },
             ) {
                 Row(
@@ -1757,8 +1777,12 @@ private fun MethodContent(
                         Text(
                             method.localizedName(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSuggested || isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = when {
+                                isSuggested -> MaterialTheme.colorScheme.onPrimaryContainer
+                                isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
                         )
                         if (isSuggested) {
                             Surface(
