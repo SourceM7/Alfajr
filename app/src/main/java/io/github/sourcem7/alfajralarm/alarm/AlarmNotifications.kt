@@ -1,6 +1,7 @@
 package io.github.sourcem7.alfajralarm.alarm
 
 import android.Manifest
+import android.app.ActivityOptions
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -43,7 +44,7 @@ object AlarmNotifications {
         alarmAtMillis: Long,
         snoozeAvailable: Boolean,
     ): Notification {
-        val open = activityIntent(context, sessionId, FULL_SCREEN_REQUEST)
+        val open = activityPendingIntent(context, sessionId, FULL_SCREEN_REQUEST)
         val builder = NotificationCompat.Builder(context, NotificationChannels.ALARM)
             .setSmallIcon(R.drawable.ic_alarm_notification)
             .setContentTitle(context.getString(if (isTest) R.string.ringing_title_test else R.string.ringing_title_daily))
@@ -82,15 +83,35 @@ object AlarmNotifications {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    private fun activityIntent(context: Context, sessionId: String, requestCode: Int): PendingIntent =
+    private fun activityPendingIntent(context: Context, sessionId: String, requestCode: Int): PendingIntent =
         PendingIntent.getActivity(
             context,
             requestCode,
-            Intent(context, AlarmRingingActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                .putExtra(AlarmIntents.EXTRA_SESSION_ID, sessionId),
+            ringingActivityIntent(context, sessionId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            fullScreenActivityOptions(),
         )
+
+    /** The same intent used by the alarm notification's content and full-screen actions. */
+    internal fun ringingActivityIntent(context: Context, sessionId: String): Intent =
+        Intent(context, AlarmRingingActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            .putExtra(AlarmIntents.EXTRA_SESSION_ID, sessionId)
+
+    /**
+     * Android 15+ requires the creator of a PendingIntent to delegate its
+     * background-activity privilege explicitly. The system sends this intent
+     * for the alarm notification's full-screen presentation.
+     */
+    @Suppress("DEPRECATION") // The API 35 constant is required on Android 15.
+    private fun fullScreenActivityOptions() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        ActivityOptions.makeBasic().apply {
+            pendingIntentCreatorBackgroundActivityStartMode =
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+        }.toBundle()
+    } else {
+        null
+    }
 
     /** Respects the device's own 12/24-hour setting. */
     private fun Context.formatTime(millis: Long): String =
