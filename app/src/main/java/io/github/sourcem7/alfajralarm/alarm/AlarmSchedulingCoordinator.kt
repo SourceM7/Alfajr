@@ -206,12 +206,10 @@ class AlarmSchedulingCoordinator(
                 // Consume the trigger as part of accepting its delivery. The
                 // session itself stays alive for a later snooze, but this
                 // particular AlarmManager broadcast must never ring twice.
-                // A null stored trigger accepts alarms scheduled before this
-                // guard existed once per session validation.
                 val sessionId = request.sessionId
                 val session = sessionId?.let(state::sessionKind) ?: return@withLock AlarmDelivery.Ignored
                 val expected = state.snoozeAlarmEpochMillis
-                if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
+                if (expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
                 stateStore.update {
                     it.copy(
                         snoozeAlarmEpochMillis = null,
@@ -230,7 +228,7 @@ class AlarmSchedulingCoordinator(
                 val sessionId = request.sessionId
                 if (sessionId == null || sessionId != state.testSessionId) return@withLock AlarmDelivery.Ignored
                 val expected = state.testAlarmEpochMillis
-                if (expected != null && expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
+                if (expected != request.triggerAtMillis) return@withLock AlarmDelivery.Ignored
                 // As with snoozes, a test request represents one delivery.
                 // Keep its session for ringing controls, but consume this
                 // trigger so an identical redelivery is stale.
