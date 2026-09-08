@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -66,19 +67,49 @@ private const val DISMISS_HOLD_MILLIS = 2_000
 fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -> Unit) {
     MaterialTheme(colorScheme = ringingColors()) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                RingingHeader(session)
-                RingtoneNotice(session.ringtoneSource)
-                SnoozeControl(session, onSnooze)
-                DismissControl(session, onDismiss)
+            val windowLayout = currentAppWindowLayout()
+            val rootModifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(24.dp)
+            if (windowLayout.showTwoPanes || windowLayout.compactHeight) {
+                Row(
+                    modifier = rootModifier,
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        RingingHeader(session)
+                        RingtoneNotice(session.ringtoneSource)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        SnoozeControl(session, onSnooze)
+                        DismissControl(session, onDismiss)
+                    }
+                }
+            } else {
+                Column(
+                    modifier = rootModifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    RingingHeader(session)
+                    RingtoneNotice(session.ringtoneSource)
+                    SnoozeControl(session, onSnooze)
+                    DismissControl(session, onDismiss)
+                }
             }
         }
     }

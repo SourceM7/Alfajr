@@ -37,12 +37,12 @@
     <string name="disable_daily_alarm_title">Turn off the daily Fajr alarm?</string>
     <string name="disable_daily_alarm_body">Tomorrow’s alarm will not ring. Your location and calculation settings will be kept.</string>
     <string name="action_keep_alarm">Keep alarm on</string>
-    <string name="location_title">Choose a fixed location</string>
-    <string name="location_body">Your selected city and its time zone stay authoritative, even when you travel.</string>
+    <string name="location_title">Choose your city</string>
+    <string name="location_body">Search offline. You can change this later.</string>
     <string name="city_results_empty">No matching city. Try a different spelling or enter coordinates below.</string>
     <string name="manual_location_title">Enter coordinates instead</string>
     <string name="method_title">Confirm your calculation method</string>
-    <string name="method_body">We suggest a method from the selected country. Confirm it explicitly before enabling the alarm.</string>
+    <string name="method_body">Pick the calculation method you follow. We’ve marked a suggestion.</string>
     <string name="method_selection">Selected: %1$s</string>
     <string name="method_pending_selection">Choose a method, then confirm it.</string>
     <string name="adjustments_title">Fine-tune the wake-up time</string>
@@ -84,7 +84,7 @@
     <string name="action_open_language_settings">Open app language settings</string>
     <string name="action_open_system_settings">Open Android settings</string>
     <string name="test_alarm_scheduled">Test alarm scheduled. It will ring in ten seconds.</string>
-    <string name="setup_step">Step %1$d of %2$d</string>
+    <string name="setup_step">%1$d of %2$d</string>
     <string name="content_description_open_settings">Open settings</string>
     <string name="content_description_back">Back</string>
     <string name="action_skip">Skip</string>
@@ -102,6 +102,14 @@
     <string name="welcome_feature_exact_title">Accurate &amp; Precise</string>
     <string name="welcome_feature_exact_desc">Astronomical calculations based on authoritative prayer standards.</string>
     <string name="hero_next_fajr">Next Fajr</string>
+    <string name="hero_next_alarm">Next alarm</string>
+    <string name="hero_alarm_date">%1$s · %2$s</string>
+    <string name="hero_fajr_time">Fajr at %1$s</string>
     <string name="hero_alarm_scheduled">Alarm set</string>
     <string name="hero_alarm_off">Alarm off</string>
+    <string name="setup_summary_title">Your setup</string>
+    <string name="setup_review_title">Review and enable</string>
+    <string name="setup_review_body">Check tomorrow’s alarm, then turn it on.</string>
+    <string name="action_enter_coordinates">Enter coordinates manually</string>
+    <string name="action_hide_coordinates">Hide manual coordinates</string>
 </resources>

@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.map
 private val Context.appearancePreferencesDataStore by preferencesDataStore(name = "appearance_preferences")
 
 class DataStoreAppearancePreferencesRepository(private val context: Context) : AppearancePreferencesStore {
-    override val dynamicColor: Flow<Boolean> = context.appearancePreferencesDataStore.data.map { it[DYNAMIC_COLOR] ?: false }
+    // Material You is the platform-native default on Android 12+. Keeping the
+    // absence of a key distinct from an explicit false preserves opt-outs.
+    override val dynamicColor: Flow<Boolean> = context.appearancePreferencesDataStore.data.map { it[DYNAMIC_COLOR] ?: true }
 
     override suspend fun updateDynamicColor(enabled: Boolean) {
         context.appearancePreferencesDataStore.edit {

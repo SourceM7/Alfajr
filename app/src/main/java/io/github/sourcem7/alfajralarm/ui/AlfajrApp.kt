@@ -41,10 +41,13 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -76,6 +79,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -89,6 +93,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,7 +108,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -111,9 +118,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -132,6 +143,7 @@ import io.github.sourcem7.alfajralarm.domain.FixedLocation
 import io.github.sourcem7.alfajralarm.domain.ManualLocationResult
 import io.github.sourcem7.alfajralarm.domain.PreferenceError
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
+import io.github.sourcem7.alfajralarm.domain.preventsDelivery
 import io.github.sourcem7.alfajralarm.ui.theme.MdSpacing
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -139,6 +151,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.Date
 import java.util.TimeZone
+import kotlin.math.roundToInt
 
 private object Routes {
     const val HOME = "home"
@@ -317,20 +330,17 @@ private fun rememberCapabilityResolver(viewModel: AlfajrViewModel): (CapabilityP
 }
 
 @Composable
-private fun CenteredContent(content: @Composable () -> Unit) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp
-    val horizontalPadding = if (screenWidth >= 600) MdSpacing.md else MdSpacing.sm
-    val maxContentWidth = when {
-        screenWidth >= 1_200 -> 960.dp
-        screenWidth >= 600 -> 720.dp
-        else -> 600.dp
-    }
+private fun CenteredContent(
+    maxWidth: Dp = 720.dp,
+    content: @Composable () -> Unit,
+) {
+    val horizontalPadding = if (currentAppWindowLayout().expandedWidth) MdSpacing.md else MdSpacing.sm
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = maxContentWidth)
+                .widthIn(max = maxWidth)
                 .padding(horizontal = horizontalPadding),
         ) {
             content()
@@ -372,7 +382,7 @@ private fun DetailScaffold(title: String, onBack: () -> Unit, content: @Composab
                 .padding(padding)
                 .consumeWindowInsets(padding),
         ) {
-            CenteredContent(content)
+            CenteredContent(content = content)
         }
     }
 }
@@ -394,28 +404,12 @@ private fun HomeScreen(
     var statusSheetOpen by remember { mutableStateOf(false) }
     var showDisableConfirmation by rememberSaveable { mutableStateOf(false) }
     val issues = problems.size
+    val windowLayout = currentAppWindowLayout()
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sunrise),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Text(
-                            stringResource(R.string.home_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                },
+            TopAppBar(
+                title = {},
                 actions = {
                     IconButton(onClick = onSettings) {
                         Icon(
@@ -438,88 +432,91 @@ private fun HomeScreen(
                 .padding(padding)
                 .consumeWindowInsets(padding),
         ) {
-            CenteredContent {
+            CenteredContent(maxWidth = 1_040.dp) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                    contentPadding = PaddingValues(vertical = MdSpacing.xs),
+                    contentPadding = PaddingValues(vertical = MdSpacing.sm),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item {
-                        AlarmHeroCard(
-                            occurrence = occurrence,
-                            preferences = preferences,
-                            dailyEnabled = state.dailyEnabled,
-                        )
-                    }
-
-                    item {
-                        DailyAlarmToggleCard(
-                            enabled = state.dailyEnabled,
-                            onToggle = { enabled ->
-                                if (enabled) {
-                                    scope.launch {
-                                        val result = viewModel.setDailyEnabled(true)
-                                        snackbar.showSnackbar(result.userMessage(context))
-                                    }
-                                } else {
-                                    showDisableConfirmation = true
-                                }
-                            },
-                        )
-                    }
-
-                    if (issues > 0 || warnings.isNotEmpty()) {
-                        item {
-                            StatusRow(
-                                issueCount = issues,
-                                warningCount = warnings.size,
-                                onDetails = { statusSheetOpen = true },
-                            )
-                        }
-                    }
-
-                    if (state.dailyEnabled) {
-                        item {
-                            CompactSkipRow(
-                                state = state,
-                                zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id,
-                                onSkip = {
-                                    scope.launch {
-                                        snackbar.showSnackbar(viewModel.skipNext().userMessage(context))
-                                    }
-                                },
-                                onUndoSkip = {
-                                    scope.launch {
-                                        snackbar.showSnackbar(viewModel.undoSkip().userMessage(context))
-                                    }
-                                },
-                            )
-                        }
-                    }
-
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = MdSpacing.xs, vertical = MdSpacing.xxs),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_history),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                stringResource(
-                                    R.string.home_last_outcome,
-                                    state.lastOutcome?.let { stringResource(it.labelResource()) }
-                                        ?: stringResource(R.string.outcome_none),
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        if (windowLayout.showTwoPanes) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(MdSpacing.md),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                AlarmOverviewCard(
+                                    occurrence = occurrence,
+                                    preferences = preferences,
+                                    dailyEnabled = state.dailyEnabled,
+                                    onToggle = { enabled ->
+                                        if (enabled) {
+                                            scope.launch {
+                                                snackbar.showSnackbar(
+                                                    viewModel.setDailyEnabled(true).userMessage(context),
+                                                )
+                                            }
+                                        } else {
+                                            showDisableConfirmation = true
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1.6f),
+                                )
+                                HomeSupportingContent(
+                                    state = state,
+                                    preferences = preferences,
+                                    issueCount = issues,
+                                    warningCount = warnings.size,
+                                    onStatus = { statusSheetOpen = true },
+                                    onSkip = {
+                                        scope.launch {
+                                            snackbar.showSnackbar(viewModel.skipNext().userMessage(context))
+                                        }
+                                    },
+                                    onUndoSkip = {
+                                        scope.launch {
+                                            snackbar.showSnackbar(viewModel.undoSkip().userMessage(context))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.sm)) {
+                                AlarmOverviewCard(
+                                    occurrence = occurrence,
+                                    preferences = preferences,
+                                    dailyEnabled = state.dailyEnabled,
+                                    onToggle = { enabled ->
+                                        if (enabled) {
+                                            scope.launch {
+                                                snackbar.showSnackbar(
+                                                    viewModel.setDailyEnabled(true).userMessage(context),
+                                                )
+                                            }
+                                        } else {
+                                            showDisableConfirmation = true
+                                        }
+                                    },
+                                )
+                                HomeSupportingContent(
+                                    state = state,
+                                    preferences = preferences,
+                                    issueCount = issues,
+                                    warningCount = warnings.size,
+                                    onStatus = { statusSheetOpen = true },
+                                    onSkip = {
+                                        scope.launch {
+                                            snackbar.showSnackbar(viewModel.skipNext().userMessage(context))
+                                        }
+                                    },
+                                    onUndoSkip = {
+                                        scope.launch {
+                                            snackbar.showSnackbar(viewModel.undoSkip().userMessage(context))
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -589,274 +586,45 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun AlarmHeroCard(
+private fun AlarmOverviewCard(
     occurrence: FajrOccurrence?,
     preferences: AlarmPreferences,
     dailyEnabled: Boolean,
-) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(MdSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-        ) {
-            if (occurrence == null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                    modifier = Modifier.padding(vertical = MdSpacing.sm),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sunrise),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
-                    Text(
-                        stringResource(R.string.home_setup_needed),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            } else {
-                val isToday = occurrence.alarmInstant.toEpochMilliseconds().isToday(occurrence.zoneId)
-                val dateLabel = if (isToday) R.string.label_today else R.string.label_tomorrow
-
-                // Header badge row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
-                        Text(
-                            text = stringResource(dateLabel).uppercase(),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (dailyEnabled) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.outline
-                                ),
-                        )
-                        Text(
-                            text = stringResource(
-                                if (dailyEnabled) R.string.hero_alarm_scheduled else R.string.hero_alarm_off
-                            ),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
-
-                // Main alarm time display
-                Column {
-                    Text(
-                        text = stringResource(R.string.hero_next_fajr),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = occurrence.alarmInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            letterSpacing = (-1.5).sp,
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-
-                // Sub-details container
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.7f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_alarm_notification),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Text(
-                                stringResource(
-                                    R.string.preview_corrected,
-                                    occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-
-                        preferences.location?.let { location ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_location),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Text(
-                                    listOfNotNull(
-                                        location.displayNameForUi(),
-                                        preferences.method?.localizedName(),
-                                    ).joinToString(stringResource(R.string.separator_dot)),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-
-                        if (occurrence.highLatitudeRuleActive) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_info),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Text(
-                                    stringResource(R.string.high_latitude_notice),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DailyAlarmToggleCard(
-    enabled: Boolean,
     onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
-    val cardShape = MaterialTheme.shapes.large
-    val containerColor by animateColorAsState(
-        targetValue = if (enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "toggleContainerColor",
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "toggleContentColor",
-    )
-
-    Card(
-        modifier = Modifier
+    Column(
+        modifier = modifier
             .fillMaxWidth()
-            .clip(cardShape)
-            .toggleable(
-                value = enabled,
-                role = Role.Switch,
-                onValueChange = { checked ->
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onToggle(checked)
-                },
-            ),
-        shape = cardShape,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+            .padding(horizontal = MdSpacing.xs, vertical = MdSpacing.sm),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(MdSpacing.md),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                            else MaterialTheme.colorScheme.surfaceContainerHighest
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_alarm_notification),
-                        contentDescription = null,
-                        tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        stringResource(if (enabled) R.string.home_alarm_on else R.string.home_alarm_off),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor,
-                    )
-                    Text(
-                        stringResource(if (enabled) R.string.status_healthy else R.string.status_disabled),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = contentColor.copy(alpha = 0.8f),
-                    )
-                }
+            Column {
+                Text(
+                    stringResource(
+                        if (dailyEnabled) R.string.home_alarm_on else R.string.home_alarm_off,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    stringResource(
+                        if (dailyEnabled) R.string.hero_alarm_scheduled else R.string.status_disabled,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-
             Switch(
-                checked = enabled,
-                onCheckedChange = null,
-                thumbContent = if (enabled) {
+                checked = dailyEnabled,
+                onCheckedChange = onToggle,
+                thumbContent = if (dailyEnabled) {
                     {
                         Icon(
                             painter = painterResource(R.drawable.ic_check),
@@ -865,6 +633,188 @@ private fun DailyAlarmToggleCard(
                         )
                     }
                 } else null,
+            )
+        }
+
+        if (occurrence == null) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(MdSpacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_sunrise),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp),
+                    )
+                    Text(
+                        stringResource(R.string.home_setup_needed),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+        } else {
+            val isToday = occurrence.alarmInstant.toEpochMilliseconds().isToday(occurrence.zoneId)
+            val dateLabel = if (isToday) R.string.label_today else R.string.label_tomorrow
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
+            ) {
+                Text(
+                    text = stringResource(R.string.hero_next_alarm),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = occurrence.alarmInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
+                    style = MaterialTheme.typography.displayLarge.copy(
+                        letterSpacing = (-1.5).sp,
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.hero_alarm_date,
+                        stringResource(dateLabel),
+                        occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(MdSpacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_sunrise),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .size(24.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            stringResource(
+                                R.string.hero_fajr_time,
+                                occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        preferences.location?.let { location ->
+                            Text(
+                                listOfNotNull(
+                                    location.displayNameForUi(),
+                                    preferences.method?.localizedName(),
+                                ).joinToString(stringResource(R.string.separator_dot)),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (occurrence.highLatitudeRuleActive) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(R.string.high_latitude_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeSupportingContent(
+    state: AlarmState,
+    preferences: AlarmPreferences,
+    issueCount: Int,
+    warningCount: Int,
+    onStatus: () -> Unit,
+    onSkip: () -> Unit,
+    onUndoSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+    ) {
+        if (issueCount > 0 || warningCount > 0) {
+            StatusRow(
+                issueCount = issueCount,
+                warningCount = warningCount,
+                onDetails = onStatus,
+            )
+        }
+        if (state.dailyEnabled) {
+            CompactSkipRow(
+                state = state,
+                zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id,
+                onSkip = onSkip,
+                onUndoSkip = onUndoSkip,
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MdSpacing.xs, vertical = MdSpacing.xxs),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_history),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                stringResource(
+                    R.string.home_last_outcome,
+                    state.lastOutcome?.let { stringResource(it.labelResource()) }
+                        ?: stringResource(R.string.outcome_none),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -1070,33 +1020,13 @@ private fun OnboardingWizard(
     onFinish: () -> Unit,
 ) {
     var step by rememberSaveable { mutableIntStateOf(0) }
-    val totalSteps = 6
+    val totalSteps = 3
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val resolve = rememberCapabilityResolver(viewModel)
 
-    val animatedProgress by animateFloatAsState(
-        targetValue = (step + 1).toFloat() / totalSteps,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "wizardProgress",
-    )
-
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-        },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Box(
@@ -1105,24 +1035,27 @@ private fun OnboardingWizard(
                 .padding(padding)
                 .consumeWindowInsets(padding),
         ) {
-            CenteredContent {
+            CenteredContent(maxWidth = 640.dp) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (step > 0) {
-                        Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs)) {
-                            LinearProgressIndicator(
-                                progress = { animatedProgress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(CircleShape),
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            IconButton(onClick = { step-- }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_arrow_back),
+                                    contentDescription = stringResource(R.string.content_description_back),
+                                )
+                            }
                             Text(
-                                stringResource(R.string.setup_step, step + 1, totalSteps),
+                                stringResource(R.string.setup_step, step, totalSteps),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
@@ -1144,34 +1077,42 @@ private fun OnboardingWizard(
                             },
                             label = "onboardingStep",
                         ) { currentStep ->
-                            when (currentStep) {
-                                0 -> WelcomeStep(onStart = { step = 1 })
-                                1 -> LocationContent(viewModel = viewModel, preferences = preferences, onLocationChosen = {})
-                                2 -> MethodContent(viewModel = viewModel, preferences = preferences, onConfirmed = {})
-                                3 -> AdjustmentsContent(viewModel = viewModel, preferences = preferences, preview = preview)
-                                4 -> PermissionsStep(problems = problems, resolve = resolve)
-                                else -> TestStep(
-                                    preview = preview,
-                                    onTest = { scope.launch { snackbar.showSnackbar(viewModel.scheduleTest().userMessage(context)) } },
-                                )
-                            }
+                            SetupPage(
+                                step = currentStep,
+                                viewModel = viewModel,
+                                preferences = preferences,
+                                preview = preview,
+                                problems = problems,
+                                resolve = resolve,
+                                onTest = {
+                                    scope.launch {
+                                        snackbar.showSnackbar(
+                                            viewModel.scheduleTest().userMessage(context),
+                                        )
+                                    }
+                                },
+                                onStart = { step = 1 },
+                            )
                         }
                     }
 
                     if (step > 0) {
                         WizardControls(
-                            showBack = true,
-                            onBack = { step-- },
                             nextEnabled = when (step) {
                                 1 -> preferences.location != null
                                 2 -> preferences.method != null
-                                4 -> problems.isEmpty()
-                                5 -> preferences.location != null && preferences.method != null && problems.isEmpty()
+                                3 -> preferences.location != null &&
+                                    preferences.method != null &&
+                                    problems.none { it.preventsDelivery }
                                 else -> true
                             },
-                            nextLabel = if (step == 5) stringResource(R.string.action_enable_daily) else stringResource(R.string.action_continue),
+                            nextLabel = if (step == totalSteps) {
+                                stringResource(R.string.action_enable_daily)
+                            } else {
+                                stringResource(R.string.action_continue)
+                            },
                             onNext = {
-                                if (step == 5) {
+                                if (step == totalSteps) {
                                     scope.launch {
                                         val result = viewModel.setDailyEnabled(true)
                                         snackbar.showSnackbar(result.userMessage(context))
@@ -1191,67 +1132,80 @@ private fun OnboardingWizard(
 }
 
 @Composable
+private fun SetupPage(
+    step: Int,
+    viewModel: AlfajrViewModel,
+    preferences: AlarmPreferences,
+    preview: FajrOccurrence?,
+    problems: List<CapabilityProblem>,
+    resolve: (CapabilityProblem) -> Unit,
+    onTest: () -> Unit,
+    onStart: () -> Unit,
+) {
+    when (step) {
+        0 -> WelcomeStep(onStart = onStart)
+        1 -> LocationContent(
+            viewModel = viewModel,
+            preferences = preferences,
+            onLocationChosen = {},
+        )
+        2 -> MethodContent(
+            viewModel = viewModel,
+            preferences = preferences,
+            onConfirmed = {},
+            confirmInside = false,
+        )
+        else -> ReviewAndEnableStep(
+            preview = preview,
+            problems = problems,
+            resolve = resolve,
+            onTest = onTest,
+        )
+    }
+}
+
+@Composable
 private fun WelcomeStep(onStart: () -> Unit) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(MdSpacing.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = MdSpacing.md),
+            .padding(vertical = MdSpacing.lg),
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
+        Spacer(Modifier.weight(0.7f))
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.primaryContainer,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_sunrise),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier
+                    .padding(MdSpacing.md)
+                    .size(56.dp),
             )
         }
-
-        Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs)) {
-            Text(
-                stringResource(R.string.welcome_eyebrow),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-            )
-            Text(
-                stringResource(R.string.welcome_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.xs)) {
-            FeatureHighlight(
-                icon = R.drawable.ic_shield,
-                title = stringResource(R.string.welcome_feature_offline_title),
-                description = stringResource(R.string.welcome_feature_offline_desc),
-            )
-            FeatureHighlight(
-                icon = R.drawable.ic_shield,
-                title = stringResource(R.string.welcome_feature_privacy_title),
-                description = stringResource(R.string.welcome_feature_privacy_desc),
-            )
-            FeatureHighlight(
-                icon = R.drawable.ic_sunrise,
-                title = stringResource(R.string.welcome_feature_exact_title),
-                description = stringResource(R.string.welcome_feature_exact_desc),
-            )
-        }
-
+        Spacer(Modifier.height(MdSpacing.md))
+        Text(
+            stringResource(R.string.welcome_title),
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(MdSpacing.xs))
+        Text(
+            stringResource(R.string.welcome_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 440.dp),
+        )
         Spacer(Modifier.weight(1f))
-
         Button(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .height(56.dp),
             shape = CircleShape,
             onClick = onStart,
         ) {
@@ -1265,44 +1219,68 @@ private fun WelcomeStep(onStart: () -> Unit) {
 }
 
 @Composable
-private fun FeatureHighlight(icon: Int, title: String, description: String) {
-    ElevatedCard(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = Modifier.fillMaxWidth(),
+private fun ReviewAndEnableStep(
+    preview: FajrOccurrence?,
+    problems: List<CapabilityProblem>,
+    resolve: (CapabilityProblem) -> Unit,
+    onTest: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = MdSpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
+        item {
+            Text(
+                stringResource(R.string.method_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        item {
+            Text(
+                stringResource(R.string.setup_review_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        item {
+            Text(
+                stringResource(R.string.setup_review_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        item { PreviewCard(preview) }
+        if (problems.isEmpty()) {
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        stringResource(R.string.status_healthy),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
-            Column {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+        } else {
+            item { PermissionsStep(problems = problems, resolve = resolve) }
+        }
+        item {
+            TextButton(onClick = onTest) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_alarm_notification),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
                 )
-                Text(
-                    description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Spacer(Modifier.width(MdSpacing.xs))
+                Text(stringResource(R.string.action_test_alarm))
             }
         }
     }
@@ -1310,10 +1288,10 @@ private fun FeatureHighlight(icon: Int, title: String, description: String) {
 
 @Composable
 private fun PermissionsStep(problems: List<CapabilityProblem>, resolve: (CapabilityProblem) -> Unit) {
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
             modifier = Modifier.padding(MdSpacing.md),
@@ -1355,9 +1333,16 @@ private fun PermissionsStep(problems: List<CapabilityProblem>, resolve: (Capabil
                 }
             } else {
                 problems.forEach { problem ->
+                    val isRequired = problem.preventsDelivery
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isRequired) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            },
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(
@@ -1366,7 +1351,11 @@ private fun PermissionsStep(problems: List<CapabilityProblem>, resolve: (Capabil
                         ) {
                             Text(
                                 stringResource(problem.labelResource()),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                color = if (isRequired) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                             )
@@ -1385,89 +1374,20 @@ private fun PermissionsStep(problems: List<CapabilityProblem>, resolve: (Capabil
 }
 
 @Composable
-private fun TestStep(preview: FajrOccurrence?, onTest: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.sm)) {
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        ) {
-            Column(
-                modifier = Modifier.padding(MdSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(MdSpacing.xs),
-            ) {
-                Text(
-                    stringResource(R.string.onboarding_test_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    stringResource(R.string.onboarding_test_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                FilledTonalButton(
-                    onClick = onTest,
-                    shape = CircleShape,
-                    modifier = Modifier.padding(top = 4.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_alarm_notification),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text(stringResource(R.string.action_test_alarm))
-                    }
-                }
-            }
-        }
-        Text(
-            stringResource(R.string.onboarding_enable_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-        PreviewCard(preview)
-    }
-}
-
-@Composable
 private fun WizardControls(
-    showBack: Boolean,
-    onBack: () -> Unit,
     nextEnabled: Boolean,
     nextLabel: String,
     onNext: () -> Unit,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-        modifier = Modifier.fillMaxWidth(),
+    Button(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = CircleShape,
+        enabled = nextEnabled,
+        onClick = onNext,
     ) {
-        if (showBack) {
-            FilledTonalButton(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                shape = CircleShape,
-                onClick = onBack,
-            ) {
-                Text(stringResource(R.string.action_back))
-            }
-        }
-        Button(
-            modifier = Modifier
-                .weight(2f)
-                .height(48.dp),
-            shape = CircleShape,
-            enabled = nextEnabled,
-            onClick = onNext,
-        ) {
-            Text(nextLabel)
-        }
+        Text(nextLabel)
     }
 }
 
@@ -1477,12 +1397,15 @@ private fun LocationContent(
     preferences: AlarmPreferences,
     onLocationChosen: () -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
+    var query by rememberSaveable { mutableStateOf("") }
     val results by viewModel.cityResults.collectAsStateWithLifecycle()
-    var latitude by remember { mutableStateOf("") }
-    var longitude by remember { mutableStateOf("") }
-    var zoneId by remember { mutableStateOf("") }
+    var latitude by rememberSaveable { mutableStateOf("") }
+    var longitude by rememberSaveable { mutableStateOf("") }
+    var zoneId by rememberSaveable { mutableStateOf("") }
+    var showManual by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<PreferenceError?>(null) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) { viewModel.prepareCitySearch() }
     LaunchedEffect(query) { viewModel.search(query) }
@@ -1490,8 +1413,17 @@ private fun LocationContent(
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
         contentPadding = PaddingValues(vertical = MdSpacing.xs),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
     ) {
+        item {
+            Text(
+                stringResource(R.string.location_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         item {
             Text(
                 stringResource(R.string.location_body),
@@ -1500,11 +1432,55 @@ private fun LocationContent(
             )
         }
 
+        preferences.location?.let { location ->
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("selected-city"),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                ) {
+                    ListItem(
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                        headlineContent = {
+                            Text(
+                                location.displayNameForUi(),
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        },
+                        supportingContent = {
+                            Text(location.zoneId)
+                        },
+                        overlineContent = {
+                            Text(stringResource(R.string.label_selected_location))
+                        },
+                        colors = ListItemDefaults.colors(
+                            containerColor = Color.Transparent,
+                            headlineColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            supportingColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            overlineColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                    )
+                }
+            }
+        }
+
         item {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("city-search"),
                 placeholder = { Text(stringResource(R.string.city_search_label)) },
                 leadingIcon = {
                     Icon(
@@ -1525,6 +1501,10 @@ private fun LocationContent(
                 },
                 shape = RoundedCornerShape(28.dp),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { focusManager.clearFocus() },
+                ),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
@@ -1549,15 +1529,19 @@ private fun LocationContent(
             }
         }
 
-        items(results, key = { it.id }) { city ->
-            ElevatedCard(
+        items(results.take(5), key = { it.id }) { city ->
+            Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.elevatedCardColors(
+                colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .testTag("city-result-${city.id}")
                     .clickable {
+                        query = ""
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
                         viewModel.selectLocation(city)
                         onLocationChosen()
                     },
@@ -1599,10 +1583,21 @@ private fun LocationContent(
         }
 
         item {
-            ElevatedCard(
+            TextButton(onClick = { showManual = !showManual }) {
+                Text(
+                    stringResource(
+                        if (showManual) R.string.action_hide_coordinates
+                        else R.string.action_enter_coordinates,
+                    ),
+                )
+            }
+        }
+
+        if (showManual) item {
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.elevatedCardColors(
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 ),
             ) {
@@ -1622,6 +1617,10 @@ private fun LocationContent(
                         label = { Text(stringResource(R.string.latitude)) },
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Next,
+                        ),
                     )
                     OutlinedTextField(
                         value = longitude,
@@ -1630,6 +1629,10 @@ private fun LocationContent(
                         label = { Text(stringResource(R.string.longitude)) },
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Next,
+                        ),
                     )
                     OutlinedTextField(
                         value = zoneId,
@@ -1638,6 +1641,10 @@ private fun LocationContent(
                         label = { Text(stringResource(R.string.time_zone)) },
                         shape = RoundedCornerShape(12.dp),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() },
+                        ),
                     )
                     error?.let {
                         Text(
@@ -1650,7 +1657,11 @@ private fun LocationContent(
                         shape = CircleShape,
                         onClick = {
                             when (val manual = viewModel.saveManualLocation(latitude, longitude, zoneId)) {
-                                is ManualLocationResult.Valid -> onLocationChosen()
+                                is ManualLocationResult.Valid -> {
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus(force = true)
+                                    onLocationChosen()
+                                }
                                 is ManualLocationResult.Invalid -> error = manual.reason
                             }
                         },
@@ -1661,16 +1672,6 @@ private fun LocationContent(
             }
         }
 
-        preferences.location?.let { location ->
-            item {
-                Text(
-                    stringResource(R.string.location_value, location.displayNameForUi()),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
-        }
     }
 }
 
@@ -1679,10 +1680,15 @@ private fun MethodContent(
     viewModel: AlfajrViewModel,
     preferences: AlarmPreferences,
     onConfirmed: () -> Unit,
+    confirmInside: Boolean = true,
 ) {
     val suggestedMethod = preferences.location?.countryCode?.let(viewModel::suggestedMethod)
     var candidate by remember(preferences.method, suggestedMethod) {
-        mutableStateOf(preferences.method ?: suggestedMethod)
+        mutableStateOf(preferences.method ?: suggestedMethod.takeIf { confirmInside })
+    }
+    val selectCandidate: (FajrMethod) -> Unit = { method ->
+        candidate = method
+        if (!confirmInside) viewModel.selectMethod(method)
     }
 
     LazyColumn(
@@ -1698,69 +1704,25 @@ private fun MethodContent(
             )
         }
 
-        preferences.location?.let { location ->
-            val suggestion = suggestedMethod ?: return@let
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_calculate),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            stringResource(R.string.suggested_method, suggestion.localizedName()),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                }
-            }
-        }
-
         items(FajrMethod.entries.toList().sortedByDescending { it == suggestedMethod }) { method ->
             val isSelected = method == candidate
             val isSuggested = method == suggestedMethod
-            val emphasis by animateFloatAsState(
-                targetValue = if (suggestedMethod == null || isSuggested) 1f else 0.68f,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                label = "methodRecommendationEmphasis",
-            )
             val containerColor by animateColorAsState(
                 targetValue = when {
-                    isSuggested -> MaterialTheme.colorScheme.primaryContainer
                     isSelected -> MaterialTheme.colorScheme.secondaryContainer
-                    else -> MaterialTheme.colorScheme.surfaceContainerLow
+                    else -> Color.Transparent
                 },
                 label = "methodRecommendationContainer",
             )
 
             Card(
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = containerColor,
                 ),
-                border = when {
-                    isSuggested -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                    isSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
-                    else -> null
-                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .alpha(emphasis)
-                    .clickable { candidate = method },
+                    .clickable { selectCandidate(method) },
             ) {
                 Row(
                     modifier = Modifier
@@ -1779,7 +1741,6 @@ private fun MethodContent(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = if (isSuggested || isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = when {
-                                isSuggested -> MaterialTheme.colorScheme.onPrimaryContainer
                                 isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
@@ -1801,13 +1762,13 @@ private fun MethodContent(
                     }
                     RadioButton(
                         selected = isSelected,
-                        onClick = { candidate = method },
+                        onClick = { selectCandidate(method) },
                     )
                 }
             }
         }
 
-        item {
+        if (confirmInside) item {
             val selected = candidate
             Column(
                 verticalArrangement = Arrangement.spacedBy(MdSpacing.xs),
@@ -1892,29 +1853,41 @@ private fun OffsetControl(
     change: (Int) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    var sliderValue by remember(value) { mutableFloatStateOf(value.toFloat()) }
 
-    ElevatedCard(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
+            modifier = Modifier.padding(MdSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(MdSpacing.xs),
         ) {
             Text(
                 label,
-                modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
 
+            Slider(
+                value = sliderValue,
+                onValueChange = { sliderValue = it },
+                onValueChangeFinished = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    change(sliderValue.roundToInt())
+                },
+                valueRange = minimum.toFloat()..maximum.toFloat(),
+                steps = maximum - minimum - 1,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 FilledTonalIconButton(
                     onClick = {
@@ -2043,6 +2016,7 @@ private fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val appName = stringResource(R.string.app_name)
+    val ringtoneTitle = rememberRingtoneTitle(preferences.ringtoneUri)
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val ringtonePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -2085,7 +2059,7 @@ private fun SettingsScreen(
                 .padding(padding)
                 .consumeWindowInsets(padding),
         ) {
-            CenteredContent {
+            CenteredContent(maxWidth = 840.dp) {
                 LazyColumn(
                     contentPadding = PaddingValues(vertical = MdSpacing.sm),
                     modifier = Modifier.fillMaxSize(),
@@ -2147,7 +2121,7 @@ private fun SettingsScreen(
                                 headline = stringResource(R.string.settings_sound),
                                 supporting = stringResource(
                                     R.string.ringtone_row,
-                                    preferences.ringtoneUri ?: stringResource(R.string.ringtone_default),
+                                    ringtoneTitle,
                                 ),
                                 trailing = {
                                     FilledTonalButton(
@@ -2266,19 +2240,23 @@ private fun SettingsScreen(
                     // Appearance Section
                     item {
                         SettingsGroup(title = stringResource(R.string.settings_section_appearance)) {
-                            SettingsItem(
-                                icon = R.drawable.ic_palette,
-                                headline = stringResource(R.string.dynamic_color_switch),
-                                supporting = stringResource(R.string.dynamic_color_description),
-                                trailing = {
-                                    Switch(
-                                        checked = dynamicColor,
-                                        onCheckedChange = viewModel::updateDynamicColor,
-                                    )
-                                },
-                                onClick = { viewModel.updateDynamicColor(!dynamicColor) },
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                SettingsItem(
+                                    icon = R.drawable.ic_palette,
+                                    headline = stringResource(R.string.dynamic_color_switch),
+                                    supporting = stringResource(R.string.dynamic_color_description),
+                                    trailing = {
+                                        Switch(
+                                            checked = dynamicColor,
+                                            onCheckedChange = viewModel::updateDynamicColor,
+                                        )
+                                    },
+                                    onClick = { viewModel.updateDynamicColor(!dynamicColor) },
+                                )
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                )
+                            }
                             SettingsItem(
                                 icon = R.drawable.ic_language,
                                 headline = stringResource(R.string.language_settings),
@@ -2380,14 +2358,29 @@ private fun SettingsGroup(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = MdSpacing.xs),
         )
-        ElevatedCard(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.elevatedCardColors(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             ),
         ) {
             Column(content = content)
+        }
+    }
+}
+
+@Composable
+private fun rememberRingtoneTitle(uri: String?): String {
+    val context = LocalContext.current
+    val fallback = stringResource(R.string.ringtone_default)
+    return remember(context, uri, fallback) {
+        if (uri == null) {
+            fallback
+        } else {
+            runCatching {
+                RingtoneManager.getRingtone(context, uri.toUri())?.getTitle(context)
+            }.getOrNull() ?: fallback
         }
     }
 }
