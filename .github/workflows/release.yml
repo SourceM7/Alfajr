@@ -54,10 +54,12 @@ jobs:
             Requires Android 8.0 (API 26) or newer.
 
             ## Privacy and permissions
-            Alfajr Alarm is offline and requests no internet, location, or storage permission. See the bundled privacy statement and third-party notices.
+            Alfajr Alarm is offline and requests no internet, location, or storage permission. Attribution and third-party notices are in `docs/THIRD_PARTY_NOTICES.md`.
 
             ## Known platform limitations
-            Force-stop can suppress scheduled alarms until the app is reopened. OEM power managers, Do Not Disturb policy, Bluetooth routing, and full-screen alarm access are device-controlled; see the troubleshooting content in the app before relying on a device.
+            Force-stop can suppress scheduled alarms until the app is reopened. OEM power managers, Do Not Disturb policy, and Bluetooth routing are device-controlled.
+
+            On Android 14 and newer the full-screen alarm needs the "Full screen notifications" permission, which is not granted automatically to a sideloaded build. Until it is granted the alarm still rings, but arrives as a notification rather than covering the lock screen. The app reports this on its home screen and links straight to the setting. Verify one real alarm before relying on a device.
           files: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/app-release.apk.sha256
