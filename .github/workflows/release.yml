@@ -26,6 +26,11 @@ jobs:
         run: |
           test -n "$ALFAJR_RELEASE_TAG_SIGNING_PUBLIC_KEY"
           printf '%s' "$ALFAJR_RELEASE_TAG_SIGNING_PUBLIC_KEY" | gpg --batch --import
+          # actions/checkout leaves refs/tags/<name> pointing at the commit, which
+          # discards the annotated tag object the signature lives on. Re-fetch the
+          # real tag, and fail loudly rather than silently skipping verification.
+          git fetch --force --tags origin
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
           git verify-tag "$GITHUB_REF_NAME"
           version="$(./gradlew --no-daemon -q :app:printVersionName)"
           printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'
