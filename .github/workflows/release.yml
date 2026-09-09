@@ -48,8 +48,12 @@ jobs:
           ALFAJR_RELEASE_KEY_ALIAS: ${{ secrets.ALFAJR_RELEASE_KEY_ALIAS }}
           ALFAJR_RELEASE_KEY_PASSWORD: ${{ secrets.ALFAJR_RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon assembleRelease verifyReleaseManifestPrivacy generateLicenseReport
-      - name: Create checksum
-        run: cd app/build/outputs/apk/release && sha256sum app-release.apk > app-release.apk.sha256
+      - name: Name the APK after the app and create its checksum
+        run: |
+          cd app/build/outputs/apk/release
+          apk="AlfajrAlarm-${GITHUB_REF_NAME#v}.apk"
+          mv app-release.apk "$apk"
+          sha256sum "$apk" > "$apk.sha256"
       - name: Publish APK and checksum
         uses: softprops/action-gh-release@v2
         with:
@@ -66,5 +70,5 @@ jobs:
 
             On Android 14 and newer the full-screen alarm needs the "Full screen notifications" permission, which is not granted automatically to a sideloaded build. Until it is granted the alarm still rings, but arrives as a notification rather than covering the lock screen. The app reports this on its home screen and links straight to the setting. Verify one real alarm before relying on a device.
           files: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release.apk.sha256
+            app/build/outputs/apk/release/AlfajrAlarm-*.apk
+            app/build/outputs/apk/release/AlfajrAlarm-*.apk.sha256

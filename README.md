@@ -4,16 +4,29 @@ A quiet, offline Fajr alarm for Android. Prayer times are calculated on the
 device — no account, internet permission, location access, advertising, or
 analytics.
 
+## Screenshots
+
+| Home | Ringing | Settings | Setup |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/home.jpg" width="200" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="200" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="200" alt="Settings grouped into prayer and alarm sections"> | <img src="docs/screenshots/setup.jpg" width="200" alt="Welcome screen listing the offline and privacy guarantees"> |
+| Next alarm, countdown, and the values it came from | Over the lock screen, snooze or hold to dismiss | Only what a Fajr alarm needs | Offline, no tracking, calculated on device |
+
 ## Install
 
-Download `app-release.apk` from the [latest release](https://github.com/SourceM7/Alfajr/releases/latest).
-Both files in the release are needed to check it before installing:
+Download the APK from the [latest release](https://github.com/SourceM7/Alfajr/releases/latest).
+Requires Android 8.0 (API 26) or newer.
+
+Every release is signed with the same key, so you can confirm a download is
+genuine rather than merely intact:
 
 ```sh
-sha256sum -c app-release.apk.sha256
+apksigner verify --print-certs AlfajrAlarm-*.apk
 ```
 
-Requires Android 8.0 (API 26) or newer.
+The certificate SHA-256 must be
+`85c1b94092a4f4f699b01eddc55bcd3b058cb0ef31c6eee383dc1d0a6ee3b543`. A `.sha256`
+file is published beside the APK if you only want to check the download
+completed.
 
 ### Full-screen alarm permission
 
