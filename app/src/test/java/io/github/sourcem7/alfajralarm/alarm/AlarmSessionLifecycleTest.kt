@@ -4,6 +4,7 @@ import io.github.sourcem7.alfajralarm.calculation.AdhanFajrCalculator
 import io.github.sourcem7.alfajralarm.domain.AlarmDelivery
 import io.github.sourcem7.alfajralarm.domain.AlarmKind
 import io.github.sourcem7.alfajralarm.domain.AlarmOutcome
+import io.github.sourcem7.alfajralarm.domain.AlarmPreferences
 import io.github.sourcem7.alfajralarm.domain.AlarmRequest
 import io.github.sourcem7.alfajralarm.domain.CapabilityProblem
 import io.github.sourcem7.alfajralarm.domain.DisabledReason
@@ -19,6 +20,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -61,6 +63,51 @@ class AlarmSessionLifecycleTest {
         return coordinator.onAlarmDelivered(
             AlarmRequest(AlarmKind.DAILY, todaysAlarm.toEpochMilliseconds(), prayerDate = today),
         ) as AlarmDelivery.Ring
+    }
+
+    @Test fun `the test alarm is refused when notifications are disabled`() = runBlocking {
+        // Without a notification there is no foreground surface, no controls,
+        // and no screen, so a test alarm would prove nothing.
+        capabilities = healthyCapabilities().copy(notificationsEnabled = false)
+
+        val result = coordinator.scheduleTest()
+
+        assertEquals(ScheduleResult.ActionRequired(CapabilityProblem.NOTIFICATIONS_DISABLED), result)
+        assertNull(gateway.registered[AlarmKind.TEST])
+        assertNull(stateStore.current().testSessionId)
+    }
+
+    @Test fun `the test alarm is refused when exact alarms are unavailable`() = runBlocking {
+        capabilities = healthyCapabilities().copy(canScheduleExactAlarms = false)
+
+        val result = coordinator.scheduleTest()
+
+        assertEquals(ScheduleResult.ActionRequired(CapabilityProblem.EXACT_ALARMS_UNAVAILABLE), result)
+        assertNull(gateway.registered[AlarmKind.TEST])
+    }
+
+    @Test fun `the test alarm reports a missing full-screen permission without refusing`() = runBlocking {
+        // The test is how a user discovers the permission is missing, so it must
+        // still ring, and must not claim it will behave like the real alarm.
+        capabilities = healthyCapabilities().copy(canUseFullScreenIntent = false)
+
+        val result = coordinator.scheduleTest()
+
+        val scheduled = result as ScheduleResult.TemporaryScheduled
+        assertEquals(AlarmKind.TEST, scheduled.kind)
+        assertEquals(listOf(CapabilityProblem.FULL_SCREEN_UNAVAILABLE), scheduled.degradedBy)
+        assertNotNull(stateStore.current().testSessionId)
+    }
+
+    @Test fun `the test alarm is offered before a location has been chosen`() = runBlocking {
+        // Onboarding offers the test before setup is complete, and it does not
+        // depend on a location or a calculation method.
+        preferences = AlarmPreferences()
+
+        val result = coordinator.scheduleTest()
+
+        val scheduled = result as ScheduleResult.TemporaryScheduled
+        assertTrue(scheduled.degradedBy.isEmpty())
     }
 
     @Test fun `a snooze scheduled by a test session rings as a test`() = runBlocking {

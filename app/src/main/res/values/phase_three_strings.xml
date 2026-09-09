@@ -14,14 +14,13 @@
     </plurals>
     <string name="ringing_hold_to_dismiss">Hold for two seconds</string>
     <string name="ringing_tap_to_dismiss">Tap to dismiss</string>
+    <string name="ringing_starting">Starting the alarm…</string>
     <string name="ringing_source_bundled">Playing the bundled fallback tone.</string>
     <string name="ringing_source_none">No alarm sound could be played. The alarm is silent.</string>
 
     <string name="missed_notification_title">Missed Fajr alarm</string>
     <string name="missed_notification_text">The alarm rang for ten minutes without being dismissed. The next daily alarm is still scheduled.</string>
 
-    <string name="phase_three_title">Ringing and test alarm</string>
-    <string name="phase_three_description">Temporary controls for the ringing path: the ringtone, vibration, snooze length, and how dismissal works.</string>
     <string name="ringtone_row">Alarm sound: %1$s</string>
     <string name="ringtone_default">Device alarm sound</string>
     <string name="action_choose_ringtone">Choose alarm sound</string>
@@ -35,7 +34,4 @@
         <item quantity="one">%1$d minute</item>
         <item quantity="other">%1$d minutes</item>
     </plurals>
-    <string name="ringing_now">Ringing now: %1$s</string>
-    <string name="ringing_not_active">Nothing is ringing.</string>
-    <string name="action_open_ringing_screen">Open the ringing screen</string>
 </resources>

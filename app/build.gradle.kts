@@ -61,6 +61,11 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Replaces the en-XA/ar-XB entries that used to sit in
+            // locales_config.xml, where they were offered to real users.
+            isPseudoLocalesEnabled = true
+        }
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true

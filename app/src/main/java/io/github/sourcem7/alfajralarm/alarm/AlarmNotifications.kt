@@ -36,6 +36,13 @@ object AlarmNotifications {
      * Android launches the full-screen intent when the screen is off or locked
      * and otherwise shows this as a heads-up notification, so the actions have
      * to be enough to snooze or dismiss on their own.
+     *
+     * [withFullScreen] belongs only to the post that begins a ringing session.
+     * The platform evaluates a full-screen intent when a notification is first
+     * added, not when it is updated, so re-posting one buys nothing — and it
+     * costs something: a notification action arriving after the alarm ended
+     * would add a *new* record carrying the intent, which launches the ringing
+     * screen for a session that no longer exists.
      */
     fun ringing(
         context: Context,
@@ -43,6 +50,7 @@ object AlarmNotifications {
         isTest: Boolean,
         alarmAtMillis: Long,
         snoozeAvailable: Boolean,
+        withFullScreen: Boolean,
     ): Notification {
         val open = activityPendingIntent(context, sessionId, FULL_SCREEN_REQUEST)
         val builder = NotificationCompat.Builder(context, NotificationChannels.ALARM)
@@ -57,7 +65,7 @@ object AlarmNotifications {
             // The service owns audio and vibration, so the notification adds none.
             .setSilent(true)
             .setContentIntent(open)
-            .setFullScreenIntent(open, true)
+        if (withFullScreen) builder.setFullScreenIntent(open, true)
         if (snoozeAvailable) {
             builder.addAction(
                 R.drawable.ic_alarm_notification,
@@ -92,10 +100,20 @@ object AlarmNotifications {
             fullScreenActivityOptions(),
         )
 
-    /** The same intent used by the alarm notification's content and full-screen actions. */
+    /**
+     * The intent every path to the ringing screen uses: the notification's
+     * content action, its full-screen intent, and the direct start in
+     * [AndroidRingingSurface].
+     *
+     * `FLAG_ACTIVITY_CLEAR_TASK` is deliberately absent. The activity declares
+     * its own `taskAffinity` and `launchMode="singleTask"`, so a repeat launch
+     * already resolves to the single existing instance; clearing the task would
+     * instead tear down a ringing screen one path had already put up and
+     * rebuild it, which is visible as a flicker now that two paths compete.
+     */
     internal fun ringingActivityIntent(context: Context, sessionId: String): Intent =
         Intent(context, AlarmRingingActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(AlarmIntents.EXTRA_SESSION_ID, sessionId)
 
     /**

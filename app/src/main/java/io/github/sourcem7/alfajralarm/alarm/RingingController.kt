@@ -11,6 +11,7 @@ import io.github.sourcem7.alfajralarm.domain.RINGING_TIMEOUT
 import io.github.sourcem7.alfajralarm.domain.RingingCommand
 import io.github.sourcem7.alfajralarm.domain.RingingSession
 import io.github.sourcem7.alfajralarm.domain.RingingSessionObserver
+import io.github.sourcem7.alfajralarm.domain.RingingSurface
 import io.github.sourcem7.alfajralarm.domain.RingingWakeLock
 import io.github.sourcem7.alfajralarm.domain.RingtoneSource
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
@@ -43,13 +44,38 @@ class RingingController(
     private val vibration: AlarmVibration,
     private val wakeLock: RingingWakeLock,
     private val missedNotifier: MissedAlarmNotifier,
+    private val surface: RingingSurface,
     private val clock: () -> Instant = { Instant.fromEpochMilliseconds(System.currentTimeMillis()) },
 ) : RingingSessionObserver {
     private val mutex = Mutex()
     private val current = MutableStateFlow<RingingSession?>(null)
+    private val claimed = MutableStateFlow<String?>(null)
 
     /** The running session, or null when nothing is ringing. */
     override val session: StateFlow<RingingSession?> = current.asStateFlow()
+
+    /** The session a start command has claimed but not yet begun. */
+    override val startingSessionId: StateFlow<String?> = claimed.asStateFlow()
+
+    /**
+     * Announces a session the service is about to start, before any suspending
+     * work. The service calls this before it posts the foreground notification,
+     * so by the time Android can act on that notification's full-screen intent
+     * the ringing screen already has a session to name. Without it the screen
+     * opens against a null session and shows nothing.
+     */
+    fun claim(sessionId: String) {
+        claimed.value = sessionId
+    }
+
+    /**
+     * Retires a claim, but only if it still names [sessionId]. A delivery that
+     * is dropped as stale must not cancel the claim of the alarm that is
+     * genuinely starting.
+     */
+    private fun releaseClaim(sessionId: String) {
+        claimed.compareAndSet(sessionId, null)
+    }
 
     /**
      * Begins ringing for [sessionId], or returns the already-running session
@@ -60,13 +86,29 @@ class RingingController(
         current.value?.let { running ->
             // A recreated activity, a redelivered broadcast, or a second start
             // command must never open a second player.
+            releaseClaim(sessionId)
             return@withLock running.takeIf { it.sessionId == sessionId }
         }
         val state = stateStore.current()
-        val kind = state.sessionKind(sessionId) ?: return@withLock null
+        val kind = state.sessionKind(sessionId)
+        if (kind == null) {
+            releaseClaim(sessionId)
+            return@withLock null
+        }
         // The claimed kind has to match the stored one, so a test intent cannot
         // borrow the daily session or the reverse.
-        if ((kind == SessionKind.TEST) != isTest) return@withLock null
+        if ((kind == SessionKind.TEST) != isTest) {
+            releaseClaim(sessionId)
+            return@withLock null
+        }
+
+        // Ask for the screen before the output devices, because starting audio
+        // walks a fallback chain of blocking prepare() calls and the screen must
+        // not queue behind it. This is also the only place that knows a session
+        // is genuinely starting: the guards above have already dropped every
+        // stale or duplicated delivery, so the screen is asked for exactly once
+        // per session and never for one that will not ring.
+        surface.show(sessionId)
 
         val loaded = preferences.load()
         wakeLock.acquire()
@@ -86,7 +128,11 @@ class RingingController(
             vibrating = loaded.vibrationEnabled,
             ringtoneSource = source,
         )
+        // The session is published before the claim is retired, so the ringing
+        // screen never observes both as null and never finishes itself between
+        // the two writes.
         current.value = started
+        releaseClaim(sessionId)
         started
     }
 
@@ -130,6 +176,7 @@ class RingingController(
         if (current.value?.sessionId != sessionId) return@withLock
         releaseOutputs()
         current.value = null
+        releaseClaim(sessionId)
     }
 
     private suspend fun snooze(running: RingingSession) {
@@ -140,6 +187,7 @@ class RingingController(
         if (result !is ScheduleResult.TemporaryScheduled) return
         releaseOutputs()
         current.value = null
+        releaseClaim(running.sessionId)
     }
 
     private suspend fun finish(running: RingingSession, outcome: AlarmOutcome) {
@@ -148,6 +196,7 @@ class RingingController(
         // Clearing the session first is what makes a second timeout tick, or a
         // duplicated notification action, a no-op.
         current.value = null
+        releaseClaim(running.sessionId)
         // A test alarm never claims the daily Fajr alarm was missed.
         if (outcome == AlarmOutcome.MISSED && !running.isTest) missedNotifier.postMissed(running)
     }

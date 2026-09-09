@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- Pseudo-locales are deliberately absent: listing en-XA/ar-XB here offers
+     them to users in Android's per-app language picker as if they were real
+     translations. Enable them for debugging with `isPseudoLocalesEnabled`. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android"
+    android:defaultLocale="en">
     <locale android:name="en" />
     <locale android:name="ar" />
-    <locale android:name="en-XA" />
-    <locale android:name="ar-XB" />
 </locale-config>

@@ -43,8 +43,17 @@ sealed interface ScheduleResult {
         val isDegraded: Boolean get() = degradedBy.isNotEmpty()
     }
 
-    /** A snooze or test alarm is registered; it carries no prayer occurrence. */
-    data class TemporaryScheduled(val kind: AlarmKind, val triggerAtMillis: Long) : ScheduleResult
+    /**
+     * A snooze or test alarm is registered; it carries no prayer occurrence.
+     * [degradedBy] is empty for a temporary alarm that will behave exactly like
+     * the real one, and otherwise names what will be missing — which is the
+     * whole point of a test alarm that cannot show its full screen.
+     */
+    data class TemporaryScheduled(
+        val kind: AlarmKind,
+        val triggerAtMillis: Long,
+        val degradedBy: List<CapabilityProblem> = emptyList(),
+    ) : ScheduleResult
 
     data class Disabled(val reason: DisabledReason) : ScheduleResult
     data class ActionRequired(val problem: CapabilityProblem) : ScheduleResult

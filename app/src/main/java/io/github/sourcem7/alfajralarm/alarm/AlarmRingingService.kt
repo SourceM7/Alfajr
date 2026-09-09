@@ -50,7 +50,13 @@ class AlarmRingingService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        enterForeground(sessionId, isTest, alarmAtMillis)
+        val starting = intent.action == ACTION_START
+        // Claiming the session before the notification is posted is what stops
+        // the full-screen screen from opening against a null session: Android
+        // cannot act on the notification until notify() has returned, and the
+        // claim is already published by then.
+        if (starting) graph.ringing.claim(sessionId)
+        enterForeground(sessionId, isTest, alarmAtMillis, withFullScreen = starting)
 
         when (intent.action) {
             ACTION_START -> beginRinging(sessionId, isTest, alarmAtMillis)
@@ -116,8 +122,16 @@ class AlarmRingingService : Service() {
         isTest: Boolean,
         alarmAtMillis: Long,
         snoozeAvailable: Boolean = true,
+        withFullScreen: Boolean = false,
     ) {
-        val notification = AlarmNotifications.ringing(this, sessionId, isTest, alarmAtMillis, snoozeAvailable)
+        val notification = AlarmNotifications.ringing(
+            context = this,
+            sessionId = sessionId,
+            isTest = isTest,
+            alarmAtMillis = alarmAtMillis,
+            snoozeAvailable = snoozeAvailable,
+            withFullScreen = withFullScreen,
+        )
         ServiceCompat.startForeground(
             this,
             AlarmNotifications.RINGING_ID,

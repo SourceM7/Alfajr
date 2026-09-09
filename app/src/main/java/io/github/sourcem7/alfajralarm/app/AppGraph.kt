@@ -2,6 +2,7 @@ package io.github.sourcem7.alfajralarm.app
 
 import android.content.Context
 import io.github.sourcem7.alfajralarm.alarm.AlarmSchedulingCoordinator
+import io.github.sourcem7.alfajralarm.alarm.AndroidRingingSurface
 import io.github.sourcem7.alfajralarm.alarm.AndroidCapabilityProbe
 import io.github.sourcem7.alfajralarm.alarm.AndroidExactAlarmGateway
 import io.github.sourcem7.alfajralarm.alarm.DeviceAlarmVibration
@@ -75,6 +76,7 @@ class AppGraph(context: Context) {
         vibration = DeviceAlarmVibration(appContext),
         wakeLock = PartialRingingWakeLock(appContext),
         missedNotifier = StatusMissedAlarmNotifier(appContext),
+        surface = AndroidRingingSurface(appContext),
     )
 
     companion object {

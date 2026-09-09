@@ -8,9 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
@@ -19,14 +16,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.sourcem7.alfajralarm.alarm.AlarmIntents
 import io.github.sourcem7.alfajralarm.alarm.AlarmRingingService
 import io.github.sourcem7.alfajralarm.app.AppGraph
-import kotlinx.coroutines.delay
-
-private const val SESSION_START_GRACE_MILLIS = 2_000L
 
 /**
- * The full-screen alarm. Android starts it from the ringing notification's
- * full-screen intent, and shows a heads-up notification with the same controls
- * instead when the device is unlocked and in use.
+ * The full-screen alarm. It is opened two ways: by the ringing notification's
+ * full-screen intent, which Android fires when the screen is off or locked, and
+ * by a direct start from the ringing runtime, which covers the case where the
+ * device is unlocked and in use and the platform downgrades that intent to a
+ * heads-up notification.
+ *
+ * Either path can arrive before the session exists, so the screen follows two
+ * signals: the running session, and the session id a start command has claimed.
+ * It finishes only when both are absent, which means the alarm really is over.
  *
  * It renders the running session and owns no playback, so being recreated by a
  * configuration change cannot start a second alarm.
@@ -45,26 +45,23 @@ class AlarmRingingActivity : ComponentActivity() {
         showOverLockScreen()
         setContent {
             val session by viewModel.session.collectAsStateWithLifecycle()
-            var observedSession by remember { mutableStateOf(false) }
-            // The session ends in the service; the screen follows it rather
-            // than deciding for itself when the alarm is over. A foreground
-            // notification can launch this activity just before its service
-            // finishes creating the session, so an initial null is not yet an
-            // ended alarm.
-            LaunchedEffect(session) {
-                if (session != null) observedSession = true
-                else if (observedSession) finish()
+            val starting by viewModel.startingSessionId.collectAsStateWithLifecycle()
+            // The session ends in the runtime; the screen follows it rather than
+            // deciding for itself when the alarm is over. A claimed session that
+            // has not begun still counts as ringing, so the window is never
+            // empty and never closes on a slow start.
+            LaunchedEffect(session, starting) {
+                if (session == null && starting == null) finish()
             }
-            LaunchedEffect(Unit) {
-                delay(SESSION_START_GRACE_MILLIS)
-                if (viewModel.session.value == null) finish()
-            }
-            session?.let { active ->
+            val active = session
+            if (active != null) {
                 RingingScreen(
                     session = active,
                     onSnooze = { send(AlarmRingingService.ACTION_SNOOZE, active.sessionId) },
                     onDismiss = { send(AlarmRingingService.ACTION_DISMISS, active.sessionId) },
                 )
+            } else if (starting != null) {
+                RingingStartingScreen()
             }
         }
     }

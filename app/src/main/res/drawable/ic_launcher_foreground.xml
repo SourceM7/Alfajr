@@ -1,31 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Material Symbols "wb_twilight" (rounded, filled), Apache License 2.0.
+    Source: https://github.com/google/material-design-icons
+
+    The glyph is authored on a 960x960 grid with its origin at the baseline, so
+    the group scales it to 52dp and lifts it into the middle of the 108dp
+    adaptive-icon canvas. 52dp is not arbitrary: the horizon bar is the widest
+    and lowest part of the glyph, so its ends sit furthest from centre. At 52dp
+    that distance is 33dp, which is exactly the radius of Material's tightest
+    keyline circle. Any larger and a circular launcher mask shears the ends of
+    the bar flat.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M24,45C27,34 34,27 43,23"
-        android:strokeColor="#FFF5DF"
-        android:strokeLineCap="round"
-        android:strokeWidth="5" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M84,45C81,34 74,27 65,23"
-        android:strokeColor="#FFF5DF"
-        android:strokeLineCap="round"
-        android:strokeWidth="5" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M54,30L54,38M36,42L41,47M72,42L67,47M28,59L36,59M80,59L72,59"
-        android:strokeColor="#FFF5DF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4" />
-    <path
-        android:fillColor="#FFF5DF"
-        android:pathData="M36,68A18,18 0,0 1,72 68Z" />
-    <path
-        android:fillColor="#FFF5DF"
-        android:pathData="M24,76C38,71 70,71 84,76L84,81C69,77 39,77 24,81Z" />
+    <group
+        android:scaleX="0.064838"
+        android:scaleY="0.064838"
+        android:translateX="22.878"
+        android:translateY="85.446">
+        <path
+            android:fillColor="#FFF5DF"
+            android:pathData="M792,-670q9,9 9,21t-9,21l-43,43q-9.07,9 -21.53,9 -12.47,0 -21.34,-9.05 -9.13,-9.06 -8.63,-21.5Q698,-619 707,-628l43,-42q9,-8 21,-8.5t21,8.5ZM110,-170q-12.75,0 -21.37,-8.68 -8.63,-8.67 -8.63,-21.5 0,-12.82 8.63,-21.32Q97.25,-230 110,-230h740q12.75,0 21.38,8.68 8.62,8.67 8.62,21.5 0,12.82 -8.62,21.32 -8.63,8.5 -21.38,8.5H110ZM480.18,-800q12.82,0 21.32,8.62 8.5,8.63 8.5,21.38v60q0,12.75 -8.68,21.37 -8.67,8.63 -21.5,8.63 -12.82,0 -21.32,-8.63 -8.5,-8.62 -8.5,-21.37v-60q0,-12.75 8.68,-21.38 8.67,-8.62 21.5,-8.62ZM169,-672q9,-9 21,-9t21,9l44,44q9,9.07 9,21.53 0,12.47 -9,21.86 -9,8.61 -21.5,8.11T212,-586l-43,-44q-8,-9 -8.5,-21t8.5,-21ZM200,-320q0,-117 81.5,-198.5T480,-600q117,0 198.5,81.5T760,-320H200Z" />
+    </group>
 </vector>

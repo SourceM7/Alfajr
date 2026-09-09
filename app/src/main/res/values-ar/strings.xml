@@ -1,5 +1,3 @@
 <resources>
     <string name="app_name">منبّه الفجر</string>
-    <string name="bootstrap_title">منبّه الفجر</string>
-    <string name="bootstrap_message">منبّه الفجر جاهز للإعداد دون اتصال بالإنترنت.</string>
 </resources>

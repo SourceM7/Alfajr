@@ -28,7 +28,25 @@ from the GeoNames geographical database.
   variants are normalized at runtime rather than stored.
 
 Attribution is a condition of the license, so it must remain in this file, in
-the asset's own `attribution` metadata, and in the application's licenses screen.
+the asset's own `attribution` metadata, and in the attribution line in the
+application's settings footer (`about_attribution`).
+
+### Material Symbols
+
+The launcher icon's foreground glyph in
+`app/src/main/res/drawable/ic_launcher_foreground.xml`, and the interface icons
+in `app/src/main/res/drawable/ic_*.xml`, are Material Symbols / Material Icons
+by Google, licensed under the Apache License 2.0.
+
+- Source: <https://github.com/google/material-design-icons>
+- Launcher glyph: `wb_twilight`, rounded, filled
+- Modifications: the SVG path is expressed as Android `pathData`, recoloured,
+  and wrapped in a group that scales it into the adaptive-icon safe zone. The
+  path geometry itself is unchanged.
+
+The Apache License 2.0 does not require an attribution notice in the user
+interface, only that the license and any notices travel with the work, which
+this file satisfies.
 
 ### Bundled fallback tone
 

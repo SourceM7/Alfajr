@@ -53,6 +53,14 @@ data class RingingSession(
 /** Read-only ringing state exposed to presentation without the runtime implementation. */
 interface RingingSessionObserver {
     val session: StateFlow<RingingSession?>
+
+    /**
+     * The session a start command has claimed but has not begun yet. The
+     * full-screen screen can be opened before the session exists, so it needs a
+     * way to tell "starting" apart from "nothing is ringing" instead of
+     * rendering an empty window.
+     */
+    val startingSessionId: StateFlow<String?>
 }
 
 /** Fixed by the product specification rather than exposed as a setting. */
@@ -110,4 +118,19 @@ interface RingingWakeLock {
 /** Posts the missed-alarm message on the status notification channel. */
 fun interface MissedAlarmNotifier {
     fun postMissed(session: RingingSession)
+}
+
+/**
+ * Opens the full-screen ringing screen for a session that has just started.
+ *
+ * The ringing notification's full-screen intent is Android's own path to that
+ * screen, but the platform downgrades it to a heads-up notification whenever
+ * the device is unlocked and in use, and withholds it entirely while the
+ * full-screen-intent permission is not granted. Ringing therefore asks for the
+ * screen directly as well. Implementations must tolerate a refused request:
+ * the alarm is already sounding and the notification still carries snooze and
+ * dismiss, so a refusal degrades the alarm rather than breaking it.
+ */
+fun interface RingingSurface {
+    fun show(sessionId: String)
 }

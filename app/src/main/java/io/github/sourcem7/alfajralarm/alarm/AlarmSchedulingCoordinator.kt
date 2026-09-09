@@ -152,6 +152,12 @@ class AlarmSchedulingCoordinator(
     }
 
     override suspend fun scheduleTest(delay: Duration): ScheduleResult = mutex.withLock {
+        // The test alarm's only job is to prove the ringing path, so it must not
+        // report success for a path Android cannot run. Configuration is not
+        // consulted: the test is offered during onboarding, before a location
+        // exists, and does not depend on one.
+        val health = health(preferences.load())
+        health.testAlarmBlocker?.let { return@withLock ScheduleResult.ActionRequired(it) }
         val sessionId = sessionIds.next()
         val trigger = (clock() + delay).toEpochMilliseconds()
         val request = AlarmRequest(kind = AlarmKind.TEST, triggerAtMillis = trigger, sessionId = sessionId)
@@ -167,7 +173,7 @@ class AlarmSchedulingCoordinator(
                 testAlarmEpochMillis = trigger,
             )
         }
-        ScheduleResult.TemporaryScheduled(AlarmKind.TEST, trigger)
+        ScheduleResult.TemporaryScheduled(AlarmKind.TEST, trigger, health.testAlarmDegradations)
     }
 
     override suspend fun onAlarmDelivered(request: AlarmRequest): AlarmDelivery = mutex.withLock {

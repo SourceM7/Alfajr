@@ -1,19 +1,17 @@
 <resources>
-    <string name="phase_one_title">Fajr preview</string>
-    <string name="phase_one_description">Choose a bundled offline city, confirm the calculation method, and compare the raw Fajr, corrected Fajr, and final alarm time.</string>
     <string name="city_search_label">Search city</string>
-    <string name="selected_location">Selected location</string>
     <string name="no_location_selected">No location selected</string>
-    <string name="calculation_method">Calculation method</string>
-    <plurals name="prayer_correction">
-        <item quantity="one">Prayer-time correction: %1$d minute</item>
-        <item quantity="other">Prayer-time correction: %1$d minutes</item>
+    <string name="label_prayer_correction">Prayer-time correction</string>
+    <string name="label_wake_offset">Wake-up offset</string>
+    <string name="offset_none">No change</string>
+    <plurals name="offset_earlier">
+        <item quantity="one">%1$d minute earlier</item>
+        <item quantity="other">%1$d minutes earlier</item>
     </plurals>
-    <plurals name="wake_offset">
-        <item quantity="one">Wake-up offset: %1$d minute</item>
-        <item quantity="other">Wake-up offset: %1$d minutes</item>
+    <plurals name="offset_later">
+        <item quantity="one">%1$d minute later</item>
+        <item quantity="other">%1$d minutes later</item>
     </plurals>
-    <string name="fajr_preview">Today and tomorrow</string>
     <string name="preview_requires_setup">Choose a location and calculation method to show a preview.</string>
     <string name="high_latitude_notice">Twilight Angle high-latitude adjustment is active.</string>
     <string name="manual_location">Manual location</string>
@@ -21,9 +19,6 @@
     <string name="longitude">Longitude</string>
     <string name="time_zone">IANA time zone (for example, Asia/Damascus)</string>
     <string name="save_manual_location">Use manual location</string>
-    <string name="selected_method">✓ %1$s</string>
-    <string name="preview_row">%1$s: raw %2$s · corrected %3$s · alarm %4$s</string>
-    <string name="suggested_method">Suggested method: %1$s. Select a method to confirm it.</string>
     <string name="method_muslim_world_league">Muslim World League</string>
     <string name="method_egyptian">Egyptian</string>
     <string name="method_karachi">Karachi</string>

@@ -13,31 +13,30 @@
     </plurals>
     <string name="ringing_snoozes_used">مرات التأجيل: %1$d من %2$d</string>
     <plurals name="ringing_snooze_unavailable">
-        <item quantity="zero">لا يتوفر تأجيل. أوقف المنبّه لإسكاته.</item>
-        <item quantity="one">استُخدم التأجيل المتاح. أوقف المنبّه لإسكاته.</item>
-        <item quantity="two">استُخدم التأجيلان المتاحان. أوقف المنبّه لإسكاته.</item>
-        <item quantity="few">استُخدمت التأجيلات الـ%1$d المتاحة. أوقف المنبّه لإسكاته.</item>
-        <item quantity="many">استُخدمت التأجيلات الـ%1$d المتاحة. أوقف المنبّه لإسكاته.</item>
-        <item quantity="other">استُخدمت التأجيلات الـ%1$d المتاحة. أوقف المنبّه لإسكاته.</item>
+        <item quantity="zero">لا يتوفر تأجيل. اضغط «إيقاف» لإسكات المنبّه.</item>
+        <item quantity="one">استُخدم التأجيل المتاح. اضغط «إيقاف» لإسكات المنبّه.</item>
+        <item quantity="two">استُخدم التأجيلان المتاحان. اضغط «إيقاف» لإسكات المنبّه.</item>
+        <item quantity="few">استُخدمت جميع التأجيلات المتاحة. اضغط «إيقاف» لإسكات المنبّه.</item>
+        <item quantity="many">استُخدمت جميع التأجيلات المتاحة. اضغط «إيقاف» لإسكات المنبّه.</item>
+        <item quantity="other">استُخدمت جميع التأجيلات المتاحة. اضغط «إيقاف» لإسكات المنبّه.</item>
     </plurals>
-    <string name="ringing_hold_to_dismiss">اضغط مطولًا لثانيتين</string>
+    <string name="ringing_hold_to_dismiss">اضغط مطوّلًا ثانيتين</string>
     <string name="ringing_tap_to_dismiss">انقر لإيقاف المنبّه</string>
+    <string name="ringing_starting">جارٍ تشغيل المنبّه…</string>
     <string name="ringing_source_bundled">يُشغَّل الصوت الاحتياطي المضمّن.</string>
     <string name="ringing_source_none">تعذّر تشغيل صوت المنبّه. المنبّه صامت.</string>
 
     <string name="missed_notification_title">فاتك منبّه الفجر</string>
     <string name="missed_notification_text">رنّ المنبّه عشر دقائق من دون إيقافه. لا يزال منبّه اليوم التالي مجدولًا.</string>
 
-    <string name="phase_three_title">الرنين ومنبّه الاختبار</string>
-    <string name="phase_three_description">إعدادات مؤقتة للرنين تشمل صوت المنبّه والاهتزاز ومدة التأجيل وطريقة الإيقاف.</string>
     <string name="ringtone_row">صوت المنبّه: %1$s</string>
     <string name="ringtone_default">صوت المنبّه الافتراضي في الجهاز</string>
-    <string name="action_choose_ringtone">اختر صوت المنبّه</string>
-    <string name="action_use_default_ringtone">استخدم صوت المنبّه الافتراضي في الجهاز</string>
+    <string name="action_choose_ringtone">اختيار صوت المنبّه</string>
+    <string name="action_use_default_ringtone">استخدام صوت المنبّه الافتراضي</string>
     <string name="ringtone_picker_title">صوت المنبّه</string>
     <string name="vibration_switch">الاهتزاز أثناء الرنين</string>
     <string name="tap_to_dismiss_switch">الإيقاف بنقرة واحدة</string>
-    <string name="tap_to_dismiss_description">خيار لتسهيل الوصول. عند إيقافه، يتطلب إيقاف المنبّه ضغطًا مطولًا لثانيتين.</string>
+    <string name="tap_to_dismiss_description">خيار لإمكانية الوصول. عند تعطيله يلزم ضغط مطوّل لثانيتين لإيقاف المنبّه.</string>
     <string name="snooze_length_label">مدة التأجيل</string>
     <plurals name="snooze_length_option">
         <item quantity="zero">%1$d دقيقة</item>
@@ -47,7 +46,4 @@
         <item quantity="many">%1$d دقيقة</item>
         <item quantity="other">%1$d دقيقة</item>
     </plurals>
-    <string name="ringing_now">يرنّ الآن: %1$s</string>
-    <string name="ringing_not_active">لا شيء يرنّ.</string>
-    <string name="action_open_ringing_screen">افتح شاشة الرنين</string>
 </resources>

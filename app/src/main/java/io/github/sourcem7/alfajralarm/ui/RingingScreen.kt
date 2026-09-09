@@ -115,6 +115,36 @@ fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -
     }
 }
 
+/**
+ * What the full-screen alarm shows between being opened and its session
+ * existing. Android can launch this screen from the ringing notification before
+ * the service has finished resolving the session, and a near-black window with
+ * nothing in it is indistinguishable from the alarm having failed.
+ */
+@Composable
+fun RingingStartingScreen() {
+    MaterialTheme(colorScheme = ringingColors()) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.ringing_starting),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(0.5f))
+            }
+        }
+    }
+}
+
 @Composable
 private fun RingingHeader(session: RingingSession) {
     Surface(

@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import io.github.sourcem7.alfajralarm.ui.theme.AlfajrShapes
+import io.github.sourcem7.alfajralarm.ui.theme.AlfajrTypography
 import io.github.sourcem7.alfajralarm.ui.theme.DawnDark
 import io.github.sourcem7.alfajralarm.ui.theme.DawnLight
 
@@ -23,5 +24,10 @@ fun AlfajrTheme(dynamicColor: Boolean, content: @Composable () -> Unit) {
         dark -> DawnDark
         else -> DawnLight
     }
-    MaterialTheme(colorScheme = colors, shapes = AlfajrShapes, content = content)
+    MaterialTheme(
+        colorScheme = colors,
+        shapes = AlfajrShapes,
+        typography = AlfajrTypography,
+        content = content,
+    )
 }

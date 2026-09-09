@@ -5,6 +5,7 @@ import io.github.sourcem7.alfajralarm.domain.CapabilityProblem
 import io.github.sourcem7.alfajralarm.domain.evaluateAlarmHealth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,39 @@ class AlarmHealthTest {
         cases.forEach { (problem, capabilities) ->
             val health = evaluateAlarmHealth(testPreferences(), capabilities, DAMASCUS.zoneId)
             assertEquals(listOf(problem), health.problems)
+        }
+    }
+
+    @Test fun `a missing full-screen permission never blocks the test alarm`() {
+        // The test alarm is how the user finds out the permission is missing, so
+        // refusing it would hide the very problem it exists to reveal.
+        val health = evaluateAlarmHealth(
+            testPreferences(),
+            healthyCapabilities().copy(canUseFullScreenIntent = false),
+            DAMASCUS.zoneId,
+        )
+
+        assertNull(health.testAlarmBlocker)
+        assertEquals(listOf(CapabilityProblem.FULL_SCREEN_UNAVAILABLE), health.testAlarmDegradations)
+    }
+
+    @Test fun `incomplete configuration never blocks the test alarm`() {
+        // Onboarding offers the test before a location or method exists.
+        val health = evaluateAlarmHealth(testPreferences(method = null), healthyCapabilities(), DAMASCUS.zoneId)
+
+        assertNull(health.testAlarmBlocker)
+        assertEquals(emptyList<CapabilityProblem>(), health.testAlarmDegradations)
+    }
+
+    @Test fun `capabilities the ringing path cannot do without block the test alarm`() {
+        val cases = listOf(
+            CapabilityProblem.EXACT_ALARMS_UNAVAILABLE to healthyCapabilities().copy(canScheduleExactAlarms = false),
+            CapabilityProblem.NOTIFICATIONS_DISABLED to healthyCapabilities().copy(notificationsEnabled = false),
+        )
+
+        cases.forEach { (problem, capabilities) ->
+            val health = evaluateAlarmHealth(testPreferences(), capabilities, DAMASCUS.zoneId)
+            assertEquals(problem, health.testAlarmBlocker)
         }
     }
 

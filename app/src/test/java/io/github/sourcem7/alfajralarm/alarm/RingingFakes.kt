@@ -4,6 +4,7 @@ import io.github.sourcem7.alfajralarm.domain.AlarmAudio
 import io.github.sourcem7.alfajralarm.domain.AlarmVibration
 import io.github.sourcem7.alfajralarm.domain.MissedAlarmNotifier
 import io.github.sourcem7.alfajralarm.domain.RingingSession
+import io.github.sourcem7.alfajralarm.domain.RingingSurface
 import io.github.sourcem7.alfajralarm.domain.RingingWakeLock
 import io.github.sourcem7.alfajralarm.domain.RingtoneSource
 
@@ -12,7 +13,11 @@ import io.github.sourcem7.alfajralarm.domain.RingtoneSource
  * the sources that cannot be played, which is how a deleted saved ringtone or a
  * device with no alarm sound is reproduced.
  */
-internal class RecordingAlarmAudio(private val failing: Set<RingtoneSource> = emptySet()) : AlarmAudio {
+internal class RecordingAlarmAudio(
+    private val failing: Set<RingtoneSource> = emptySet(),
+    /** Shared with the other fakes when a test needs to assert ordering. */
+    private val log: MutableList<String>? = null,
+) : AlarmAudio {
     val attempted = mutableListOf<RingtoneSource>()
     val volumes = mutableListOf<Float>()
     var playing: RingtoneSource? = null
@@ -22,6 +27,7 @@ internal class RecordingAlarmAudio(private val failing: Set<RingtoneSource> = em
 
     override fun start(source: RingtoneSource, savedRingtoneUri: String?): Boolean {
         attempted += source
+        log?.add("audio:$source")
         // A failed candidate must leave nothing playing behind it.
         playing = null
         if (source in failing) return false
@@ -73,5 +79,21 @@ internal class RecordingMissedNotifier : MissedAlarmNotifier {
 
     override fun postMissed(session: RingingSession) {
         posted += session
+    }
+}
+
+/**
+ * Records every request to open the full-screen alarm, so "exactly once per
+ * session" and "never for a dropped delivery" can both be asserted.
+ */
+internal class RecordingRingingSurface(
+    /** Shared with the other fakes when a test needs to assert ordering. */
+    private val log: MutableList<String>? = null,
+) : RingingSurface {
+    val shown = mutableListOf<String>()
+
+    override fun show(sessionId: String) {
+        shown += sessionId
+        log?.add("screen:$sessionId")
     }
 }

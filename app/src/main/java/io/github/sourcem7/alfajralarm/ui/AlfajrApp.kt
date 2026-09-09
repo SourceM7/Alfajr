@@ -9,29 +9,27 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -41,6 +39,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,10 +54,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -66,7 +63,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -96,6 +93,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -104,6 +102,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -115,6 +114,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -145,8 +145,11 @@ import io.github.sourcem7.alfajralarm.domain.PreferenceError
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
 import io.github.sourcem7.alfajralarm.domain.preventsDelivery
 import io.github.sourcem7.alfajralarm.ui.theme.MdSpacing
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import java.text.DecimalFormat
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Date
@@ -160,9 +163,6 @@ private object Routes {
     const val METHOD = "method"
     const val ADJUSTMENTS = "adjustments"
     const val SETTINGS = "settings"
-    const val PRIVACY = "privacy"
-    const val LICENSES = "licenses"
-    const val TROUBLESHOOTING = "troubleshooting"
 }
 
 /** The production single-activity UI, wired with Navigation Compose. */
@@ -278,34 +278,7 @@ fun AlfajrApp(viewModel: AlfajrViewModel) {
                         onLocation = { navController.navigate(Routes.LOCATION) },
                         onMethod = { navController.navigate(Routes.METHOD) },
                         onAdjustments = { navController.navigate(Routes.ADJUSTMENTS) },
-                        onPrivacy = { navController.navigate(Routes.PRIVACY) },
-                        onLicenses = { navController.navigate(Routes.LICENSES) },
-                        onTroubleshooting = { navController.navigate(Routes.TROUBLESHOOTING) },
                     )
-                }
-                composable(Routes.PRIVACY) {
-                    DetailScaffold(
-                        title = stringResource(R.string.privacy_title),
-                        onBack = { navController.popBackStack() },
-                    ) {
-                        ReadBody(R.string.privacy_title, R.string.privacy_body)
-                    }
-                }
-                composable(Routes.LICENSES) {
-                    DetailScaffold(
-                        title = stringResource(R.string.licenses_title),
-                        onBack = { navController.popBackStack() },
-                    ) {
-                        ReadBody(R.string.licenses_title, R.string.licenses_body)
-                    }
-                }
-                composable(Routes.TROUBLESHOOTING) {
-                    DetailScaffold(
-                        title = stringResource(R.string.troubleshooting_title),
-                        onBack = { navController.popBackStack() },
-                    ) {
-                        ReadBody(R.string.troubleshooting_title, R.string.troubleshooting_body)
-                    }
                 }
             }
         }
@@ -403,13 +376,49 @@ private fun HomeScreen(
     val resolve = rememberCapabilityResolver(viewModel)
     var statusSheetOpen by remember { mutableStateOf(false) }
     var showDisableConfirmation by rememberSaveable { mutableStateOf(false) }
-    val issues = problems.size
     val windowLayout = currentAppWindowLayout()
+
+    fun report(action: suspend () -> ScheduleResult) {
+        scope.launch { snackbar.showSnackbar(action().userMessage(context)) }
+    }
+
+    val hero: @Composable (Modifier) -> Unit = { modifier ->
+        AlarmHero(
+            occurrence = occurrence,
+            preferences = preferences,
+            dailyEnabled = state.dailyEnabled,
+            problems = problems,
+            warnings = warnings,
+            onStatus = { statusSheetOpen = true },
+            onToggle = { enabled ->
+                if (enabled) report { viewModel.setDailyEnabled(true) } else showDisableConfirmation = true
+            },
+            modifier = modifier,
+        )
+    }
+    val details: @Composable (Modifier) -> Unit = { modifier ->
+        HomeDetails(
+            state = state,
+            preferences = preferences,
+            occurrence = occurrence,
+            timeZoneMismatch = AlarmWarning.TIME_ZONE_MISMATCH in warnings,
+            onSkip = { report { viewModel.skipNext() } },
+            onUndoSkip = { report { viewModel.undoSkip() } },
+            onTest = { report { viewModel.scheduleTest() } },
+            modifier = modifier,
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    Text(
+                        stringResource(R.string.home_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 actions = {
                     IconButton(onClick = onSettings) {
                         Icon(
@@ -419,9 +428,7 @@ private fun HomeScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -433,90 +440,41 @@ private fun HomeScreen(
                 .consumeWindowInsets(padding),
         ) {
             CenteredContent(maxWidth = 1_040.dp) {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                    contentPadding = PaddingValues(vertical = MdSpacing.sm),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item {
-                        if (windowLayout.showTwoPanes) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(MdSpacing.md),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                AlarmOverviewCard(
-                                    occurrence = occurrence,
-                                    preferences = preferences,
-                                    dailyEnabled = state.dailyEnabled,
-                                    onToggle = { enabled ->
-                                        if (enabled) {
-                                            scope.launch {
-                                                snackbar.showSnackbar(
-                                                    viewModel.setDailyEnabled(true).userMessage(context),
-                                                )
-                                            }
-                                        } else {
-                                            showDisableConfirmation = true
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1.6f),
-                                )
-                                HomeSupportingContent(
-                                    state = state,
-                                    preferences = preferences,
-                                    issueCount = issues,
-                                    warningCount = warnings.size,
-                                    onStatus = { statusSheetOpen = true },
-                                    onSkip = {
-                                        scope.launch {
-                                            snackbar.showSnackbar(viewModel.skipNext().userMessage(context))
-                                        }
-                                    },
-                                    onUndoSkip = {
-                                        scope.launch {
-                                            snackbar.showSnackbar(viewModel.undoSkip().userMessage(context))
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
+                if (windowLayout.showTwoPanes) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = MdSpacing.sm),
+                        horizontalArrangement = Arrangement.spacedBy(MdSpacing.md),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        hero(Modifier.weight(1.1f))
+                        details(Modifier.weight(1f))
+                    }
+                } else {
+                    // The hero is sized from the viewport rather than left to its
+                    // content, which is what stops a short healthy state from
+                    // stranding half the screen empty. Anything that does not fit
+                    // scrolls instead of being squeezed.
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        // Landscape has no height to spare, so the hero is left
+                        // to its content there and only claims a share of a
+                        // portrait screen.
+                        val heroHeight = if (windowLayout.compactHeight) {
+                            null
                         } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.sm)) {
-                                AlarmOverviewCard(
-                                    occurrence = occurrence,
-                                    preferences = preferences,
-                                    dailyEnabled = state.dailyEnabled,
-                                    onToggle = { enabled ->
-                                        if (enabled) {
-                                            scope.launch {
-                                                snackbar.showSnackbar(
-                                                    viewModel.setDailyEnabled(true).userMessage(context),
-                                                )
-                                            }
-                                        } else {
-                                            showDisableConfirmation = true
-                                        }
-                                    },
-                                )
-                                HomeSupportingContent(
-                                    state = state,
-                                    preferences = preferences,
-                                    issueCount = issues,
-                                    warningCount = warnings.size,
-                                    onStatus = { statusSheetOpen = true },
-                                    onSkip = {
-                                        scope.launch {
-                                            snackbar.showSnackbar(viewModel.skipNext().userMessage(context))
-                                        }
-                                    },
-                                    onUndoSkip = {
-                                        scope.launch {
-                                            snackbar.showSnackbar(viewModel.undoSkip().userMessage(context))
-                                        }
-                                    },
-                                )
-                            }
+                            (maxHeight * HERO_HEIGHT_FRACTION).coerceAtLeast(HERO_MIN_HEIGHT)
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = MdSpacing.sm),
+                            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+                        ) {
+                            hero(heroHeight?.let { Modifier.heightIn(min = it) } ?: Modifier)
+                            details(Modifier)
                         }
                     }
                 }
@@ -532,8 +490,7 @@ private fun HomeScreen(
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         ) {
             Column(
-                modifier = Modifier
-                    .padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
+                modifier = Modifier.padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
                 verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
             ) {
                 Text(
@@ -567,10 +524,7 @@ private fun HomeScreen(
                 TextButton(
                     onClick = {
                         showDisableConfirmation = false
-                        scope.launch {
-                            val result = viewModel.setDailyEnabled(false)
-                            snackbar.showSnackbar(result.userMessage(context))
-                        }
+                        report { viewModel.setDailyEnabled(false) }
                     },
                 ) {
                     Text(stringResource(R.string.action_disable_daily))
@@ -585,45 +539,145 @@ private fun HomeScreen(
     }
 }
 
+private const val HERO_HEIGHT_FRACTION = 0.44f
+private val HERO_MIN_HEIGHT = 260.dp
+
+/**
+ * The one thing the home screen exists to answer: when does the alarm go off.
+ *
+ * Everything in it is centred on a single axis so there is one reading order —
+ * state, countdown, time, date, switch — and it is given a share of the viewport
+ * rather than only as much room as its text needs.
+ */
 @Composable
-private fun AlarmOverviewCard(
+private fun AlarmHero(
     occurrence: FajrOccurrence?,
     preferences: AlarmPreferences,
     dailyEnabled: Boolean,
+    problems: List<CapabilityProblem>,
+    warnings: List<AlarmWarning>,
+    onStatus: () -> Unit,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
+    // A pre-dawn wash: warmest at the horizon line behind the time, fading into
+    // the page so the hero reads as part of the screen, not a card on top of it.
+    val dawn = Brush.verticalGradient(
+        colors = listOf(
+            colors.primaryContainer,
+            colors.primaryContainer.copy(alpha = 0.45f),
+            colors.surface,
+        ),
+    )
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = MdSpacing.xs, vertical = MdSpacing.sm),
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(dawn)
+            .padding(horizontal = MdSpacing.md, vertical = MdSpacing.md),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(MdSpacing.md),
+        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm, Alignment.CenterVertically),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
+        StatusChip(
+            problems = problems,
+            warnings = warnings,
+            dailyEnabled = dailyEnabled,
+            onClick = onStatus,
+        )
+
+        if (occurrence == null) {
+            Icon(
+                painter = painterResource(R.drawable.ic_sunrise),
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(40.dp),
+            )
+            Text(
+                stringResource(R.string.home_setup_needed),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+            )
+        } else {
+            val alarmMillis = occurrence.alarmInstant.toEpochMilliseconds()
+            val dateLabel = if (alarmMillis.isToday(occurrence.zoneId)) {
+                R.string.label_today
+            } else {
+                R.string.label_tomorrow
+            }
+            // Grouped for TalkBack: the countdown, time and date are one
+            // fact, not three unrelated lines.
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
+            ) {
+                countdownUntil(occurrence.alarmInstant)?.takeIf { dailyEnabled }?.let { countdown ->
+                    Text(
+                        text = countdown,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
                 Text(
-                    stringResource(
-                        if (dailyEnabled) R.string.home_alarm_on else R.string.home_alarm_off,
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = alarmMillis.timeFor(occurrence.zoneId),
+                    style = MaterialTheme.typography.displayLarge.copy(letterSpacing = (-1.5).sp),
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
                 )
                 Text(
-                    stringResource(
-                        if (dailyEnabled) R.string.hero_alarm_scheduled else R.string.status_disabled,
+                    text = stringResource(
+                        R.string.hero_alarm_date,
+                        stringResource(dateLabel),
+                        occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
                     ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceVariant,
                 )
             }
+
+            if (occurrence.highLatitudeRuleActive) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                        tint = colors.tertiary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        stringResource(R.string.high_latitude_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.tertiary,
+                    )
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+            modifier = Modifier
+                .clip(CircleShape)
+                .toggleable(
+                    value = dailyEnabled,
+                    role = Role.Switch,
+                    onValueChange = onToggle,
+                )
+                .padding(horizontal = MdSpacing.sm, vertical = MdSpacing.xs),
+        ) {
+            Text(
+                stringResource(if (dailyEnabled) R.string.home_alarm_on else R.string.home_alarm_off),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
             Switch(
                 checked = dailyEnabled,
-                onCheckedChange = onToggle,
+                // The whole row is the control, so the switch itself is not
+                // separately focusable or separately announced.
+                onCheckedChange = null,
                 thumbContent = if (dailyEnabled) {
                     {
                         Icon(
@@ -635,248 +689,230 @@ private fun AlarmOverviewCard(
                 } else null,
             )
         }
+    }
+}
 
-        if (occurrence == null) {
-            Surface(
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier.padding(MdSpacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_sunrise),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp),
-                    )
-                    Text(
-                        stringResource(R.string.home_setup_needed),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-            }
-        } else {
-            val isToday = occurrence.alarmInstant.toEpochMilliseconds().isToday(occurrence.zoneId)
-            val dateLabel = if (isToday) R.string.label_today else R.string.label_tomorrow
+/**
+ * The alarm's health in one line. A healthy alarm says so — the old screen
+ * showed nothing at all when everything was fine, which reads the same as an
+ * alarm that has not been checked.
+ */
+@Composable
+private fun StatusChip(
+    problems: List<CapabilityProblem>,
+    warnings: List<AlarmWarning>,
+    dailyEnabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val actionable = problems.isNotEmpty() || warnings.isNotEmpty()
+    val label = when {
+        problems.isNotEmpty() -> R.string.status_degraded
+        warnings.isNotEmpty() -> R.string.status_warning
+        dailyEnabled -> R.string.status_healthy
+        else -> R.string.status_disabled
+    }
+    val icon = when {
+        problems.isNotEmpty() -> R.drawable.ic_warning
+        warnings.isNotEmpty() -> R.drawable.ic_info
+        dailyEnabled -> R.drawable.ic_check
+        else -> R.drawable.ic_info
+    }
+    val container = when {
+        problems.isNotEmpty() -> MaterialTheme.colorScheme.errorContainer
+        warnings.isNotEmpty() -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val content = when {
+        problems.isNotEmpty() -> MaterialTheme.colorScheme.onErrorContainer
+        warnings.isNotEmpty() -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
-            ) {
+    Surface(
+        shape = CircleShape,
+        color = container,
+        contentColor = content,
+        modifier = if (actionable) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = MdSpacing.sm, vertical = MdSpacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(stringResource(label), style = MaterialTheme.typography.labelLarge)
+            if (actionable) {
                 Text(
-                    text = stringResource(R.string.hero_next_alarm),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = occurrence.alarmInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        letterSpacing = (-1.5).sp,
-                    ),
+                    stringResource(R.string.home_view_details),
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    text = stringResource(
-                        R.string.hero_alarm_date,
-                        stringResource(dateLabel),
-                        occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Surface(
-                shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier.padding(MdSpacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sunrise),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .size(24.dp),
-                        )
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.hero_fajr_time,
-                                occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        preferences.location?.let { location ->
-                            Text(
-                                listOfNotNull(
-                                    location.displayNameForUi(),
-                                    preferences.method?.localizedName(),
-                                ).joinToString(stringResource(R.string.separator_dot)),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (occurrence.highLatitudeRuleActive) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        stringResource(R.string.high_latitude_notice),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
             }
         }
     }
 }
 
+/**
+ * Everything the hero deliberately leaves out, as one scannable list: the
+ * calculated Fajr the alarm is derived from, where it is calculated for, and
+ * what happened last time. Rows reuse the settings row so the two screens read
+ * as the same app.
+ */
 @Composable
-private fun HomeSupportingContent(
+private fun HomeDetails(
     state: AlarmState,
     preferences: AlarmPreferences,
-    issueCount: Int,
-    warningCount: Int,
-    onStatus: () -> Unit,
+    occurrence: FajrOccurrence?,
+    timeZoneMismatch: Boolean,
     onSkip: () -> Unit,
     onUndoSkip: () -> Unit,
+    onTest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
     ) {
-        if (issueCount > 0 || warningCount > 0) {
-            StatusRow(
-                issueCount = issueCount,
-                warningCount = warningCount,
-                onDetails = onStatus,
+        SettingsGroup {
+            if (occurrence != null) {
+                SettingsItem(
+                    icon = R.drawable.ic_sunrise,
+                    headline = stringResource(R.string.label_corrected_fajr),
+                    trailing = { DetailValue(occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(zoneId)) },
+                )
+                HomeDivider()
+            }
+            SettingsItem(
+                icon = R.drawable.ic_location,
+                headline = stringResource(R.string.label_selected_location),
+                // The selected zone is authoritative, so when it differs from
+                // the device's the screen shows both rather than quietly
+                // presenting a time the phone's clock contradicts.
+                supporting = listOfNotNull(
+                    stringResource(R.string.label_authoritative_zone, zoneId),
+                    if (timeZoneMismatch) {
+                        stringResource(
+                            R.string.label_device_time,
+                            System.currentTimeMillis().timeFor(ZoneId.systemDefault().id),
+                            ZoneId.systemDefault().id,
+                        )
+                    } else null,
+                ).joinToString("\n"),
+                trailing = {
+                    DetailValue(
+                        preferences.location?.displayNameForUi()
+                            ?: stringResource(R.string.no_location_selected),
+                    )
+                },
+            )
+            HomeDivider()
+            SettingsItem(
+                icon = R.drawable.ic_calculate,
+                headline = stringResource(R.string.label_calculation_method),
+                trailing = {
+                    DetailValue(
+                        preferences.method?.localizedName()
+                            ?: stringResource(R.string.error_method_required),
+                    )
+                },
+            )
+            if (state.dailyEnabled) {
+                HomeDivider()
+                val skipped = state.skippedPrayerDate
+                SettingsItem(
+                    icon = R.drawable.ic_skip,
+                    headline = stringResource(R.string.skip_next_title),
+                    supporting = skipped?.let { stringResource(R.string.skipped_date, it.dateFor(zoneId)) }
+                        ?: stringResource(R.string.skip_next_body),
+                    trailing = {
+                        FilledTonalButton(
+                            onClick = if (skipped != null) onUndoSkip else onSkip,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                stringResource(if (skipped != null) R.string.undo_skip else R.string.skip_next_alarm),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    },
+                )
+            }
+            HomeDivider()
+            SettingsItem(
+                icon = R.drawable.ic_history,
+                headline = stringResource(R.string.outcome_title),
+                trailing = {
+                    DetailValue(
+                        state.lastOutcome?.let { stringResource(it.labelResource()) }
+                            ?: stringResource(R.string.outcome_none),
+                    )
+                },
             )
         }
-        if (state.dailyEnabled) {
-            CompactSkipRow(
-                state = state,
-                zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id,
-                onSkip = onSkip,
-                onUndoSkip = onUndoSkip,
-            )
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MdSpacing.xs, vertical = MdSpacing.xxs),
+
+        FilledTonalButton(
+            onClick = onTest,
+            modifier = Modifier.fillMaxWidth(),
+            shape = CircleShape,
+            contentPadding = PaddingValues(vertical = 14.dp),
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_history),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                stringResource(
-                    R.string.home_last_outcome,
-                    state.lastOutcome?.let { stringResource(it.labelResource()) }
-                        ?: stringResource(R.string.outcome_none),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(stringResource(R.string.action_test_alarm), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
 
 @Composable
-private fun StatusRow(issueCount: Int, warningCount: Int, onDetails: () -> Unit) {
-    val isError = issueCount > 0
-    val containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer
-    val contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer
+private fun DetailValue(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.End,
+    )
+}
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onDetails),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(
-                    painter = painterResource(if (isError) R.drawable.ic_warning else R.drawable.ic_info),
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(24.dp),
-                )
-                Column {
-                    Text(
-                        stringResource(R.string.status_degraded),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor,
-                    )
-                    Text(
-                        stringResource(R.string.label_alarm_health),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = contentColor.copy(alpha = 0.8f),
-                    )
-                }
-            }
+@Composable
+private fun HomeDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+}
 
-            FilledTonalButton(
-                onClick = onDetails,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    stringResource(R.string.home_view_details),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
+/**
+ * How long until the alarm, recomputed once a minute. It lives here rather than
+ * in the view model because nothing outside this screen needs a ticking clock.
+ */
+@Composable
+private fun countdownUntil(alarmAt: kotlin.time.Instant): String? {
+    val alarmMillis = alarmAt.toEpochMilliseconds()
+    val remaining by produceState(alarmMillis - System.currentTimeMillis(), alarmMillis) {
+        while (true) {
+            val left = alarmMillis - System.currentTimeMillis()
+            value = left
+            if (left <= 0) break
+            // Wake on the minute boundary so the number never looks stale.
+            delay(left % 60_000L + 1)
         }
+    }
+    if (remaining <= 0) return null
+    val totalMinutes = remaining / 60_000L
+    return when {
+        totalMinutes < 1 -> stringResource(R.string.countdown_imminent)
+        totalMinutes < 60 -> pluralStringResource(
+            R.plurals.countdown_minutes,
+            totalMinutes.toInt(),
+            totalMinutes.toInt(),
+        )
+        else -> stringResource(
+            R.string.countdown_hours_minutes,
+            (totalMinutes / 60).toInt(),
+            (totalMinutes % 60).toInt(),
+        )
     }
 }
 
@@ -940,78 +976,6 @@ private fun CapabilityIssueList(
 }
 
 @Composable
-private fun CompactSkipRow(state: AlarmState, zoneId: String, onSkip: () -> Unit, onUndoSkip: () -> Unit) {
-    val isSkipped = state.skippedPrayerDate != null
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isSkipped) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = MdSpacing.md, vertical = MdSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSkipped) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                            else MaterialTheme.colorScheme.surfaceContainerHighest
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_skip),
-                        contentDescription = null,
-                        tint = if (isSkipped) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                Column {
-                    Text(
-                        stringResource(R.string.skip_next_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (isSkipped) {
-                        Text(
-                            stringResource(R.string.skipped_date, state.skippedPrayerDate.dateFor(zoneId)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        )
-                    } else {
-                        Text(
-                            stringResource(R.string.skip_next_body),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            FilledTonalButton(
-                onClick = if (isSkipped) onUndoSkip else onSkip,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    stringResource(if (isSkipped) R.string.undo_skip else R.string.skip_next_alarm),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun OnboardingWizard(
     viewModel: AlfajrViewModel,
     preferences: AlarmPreferences,
@@ -1025,6 +989,10 @@ private fun OnboardingWizard(
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val resolve = rememberCapabilityResolver(viewModel)
+
+    // Without this, system back on step 2 leaves the app instead of going to
+    // step 1, which loses everything the user has entered so far.
+    BackHandler(enabled = step > 0) { step-- }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -1059,6 +1027,16 @@ private fun OnboardingWizard(
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
+                        // How much is left is worth showing, not just counting.
+                        val progress by animateFloatAsState(
+                            targetValue = step.toFloat() / totalSteps,
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            label = "setupProgress",
+                        )
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
 
                     Box(modifier = Modifier.weight(1f)) {
@@ -1172,7 +1150,7 @@ private fun WelcomeStep(onStart: () -> Unit) {
             .fillMaxSize()
             .padding(vertical = MdSpacing.lg),
     ) {
-        Spacer(Modifier.weight(0.7f))
+        Spacer(Modifier.weight(0.4f))
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -1192,6 +1170,7 @@ private fun WelcomeStep(onStart: () -> Unit) {
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
         )
         Spacer(Modifier.height(MdSpacing.xs))
         Text(
@@ -1201,6 +1180,29 @@ private fun WelcomeStep(onStart: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 440.dp),
         )
+        Spacer(Modifier.height(MdSpacing.lg))
+        // The three promises the product makes, which had copy in both locales
+        // but were never rendered.
+        Column(
+            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+            modifier = Modifier.widthIn(max = 440.dp),
+        ) {
+            WelcomePromise(
+                icon = R.drawable.ic_shield,
+                title = stringResource(R.string.welcome_feature_offline_title),
+                body = stringResource(R.string.welcome_feature_offline_desc),
+            )
+            WelcomePromise(
+                icon = R.drawable.ic_info,
+                title = stringResource(R.string.welcome_feature_privacy_title),
+                body = stringResource(R.string.welcome_feature_privacy_desc),
+            )
+            WelcomePromise(
+                icon = R.drawable.ic_calculate,
+                title = stringResource(R.string.welcome_feature_exact_title),
+                body = stringResource(R.string.welcome_feature_exact_desc),
+            )
+        }
         Spacer(Modifier.weight(1f))
         Button(
             modifier = Modifier
@@ -1213,6 +1215,29 @@ private fun WelcomeStep(onStart: () -> Unit) {
                 stringResource(R.string.action_begin_setup),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WelcomePromise(icon: Int, title: String, body: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -1232,16 +1257,10 @@ private fun ReviewAndEnableStep(
     ) {
         item {
             Text(
-                stringResource(R.string.method_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        item {
-            Text(
                 stringResource(R.string.setup_review_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() },
             )
         }
         item {
@@ -1817,11 +1836,7 @@ private fun AdjustmentsContent(
         )
 
         OffsetControl(
-            label = pluralStringResource(
-                R.plurals.prayer_correction,
-                kotlin.math.abs(preferences.correctionMinutes),
-                preferences.correctionMinutes,
-            ),
+            label = stringResource(R.string.label_prayer_correction),
             value = preferences.correctionMinutes,
             minimum = -30,
             maximum = 30,
@@ -1829,11 +1844,7 @@ private fun AdjustmentsContent(
         )
 
         OffsetControl(
-            label = pluralStringResource(
-                R.plurals.wake_offset,
-                kotlin.math.abs(preferences.wakeOffsetMinutes),
-                preferences.wakeOffsetMinutes,
-            ),
+            label = stringResource(R.string.label_wake_offset),
             value = preferences.wakeOffsetMinutes,
             minimum = -60,
             maximum = 30,
@@ -1854,6 +1865,8 @@ private fun OffsetControl(
 ) {
     val haptic = LocalHapticFeedback.current
     var sliderValue by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    val decreaseDescription = stringResource(R.string.content_description_decrease)
+    val increaseDescription = stringResource(R.string.content_description_increase)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1870,6 +1883,13 @@ private fun OffsetControl(
                 label,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
+            )
+            // The direction is spelled out rather than left to a minus sign,
+            // which Arabic plurals drop along with the number they qualify.
+            Text(
+                offsetDescription(value),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Slider(
@@ -1900,6 +1920,9 @@ private fun OffsetControl(
                     Text(
                         stringResource(R.string.action_decrease),
                         style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.semantics {
+                            contentDescription = decreaseDescription
+                        },
                     )
                 }
 
@@ -1909,7 +1932,7 @@ private fun OffsetControl(
                     modifier = Modifier.widthIn(min = 48.dp),
                 ) {
                     Text(
-                        text = if (value > 0) "+$value" else value.toString(),
+                        text = signedMinutes(value),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -1928,6 +1951,9 @@ private fun OffsetControl(
                     Text(
                         stringResource(R.string.action_increase),
                         style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.semantics {
+                            contentDescription = increaseDescription
+                        },
                     )
                 }
             }
@@ -2010,9 +2036,6 @@ private fun SettingsScreen(
     onLocation: () -> Unit,
     onMethod: () -> Unit,
     onAdjustments: () -> Unit,
-    onPrivacy: () -> Unit,
-    onLicenses: () -> Unit,
-    onTroubleshooting: () -> Unit,
 ) {
     val context = LocalContext.current
     val appName = stringResource(R.string.app_name)
@@ -2273,56 +2296,17 @@ private fun SettingsScreen(
                         }
                     }
 
-                    // About Section
                     item {
-                        SettingsGroup(title = stringResource(R.string.settings_about)) {
-                            SettingsItem(
-                                icon = R.drawable.ic_shield,
-                                headline = stringResource(R.string.privacy_title),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                onClick = onPrivacy,
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            SettingsItem(
-                                icon = R.drawable.ic_info,
-                                headline = stringResource(R.string.licenses_title),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                onClick = onLicenses,
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            SettingsItem(
-                                icon = R.drawable.ic_info,
-                                headline = stringResource(R.string.troubleshooting_title),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                onClick = onTroubleshooting,
-                            )
-                        }
-                    }
-
-                    item {
-                        Box(
+                        // The GeoNames line is a licence condition of the bundled
+                        // city data (CC BY 4.0), not decoration. It lives here
+                        // rather than behind a Licenses screen so the obligation
+                        // is met without a settings entry nobody opens.
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = MdSpacing.md),
-                            contentAlignment = Alignment.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
                         ) {
                             Text(
                                 stringResource(
@@ -2332,6 +2316,12 @@ private fun SettingsScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            Text(
+                                stringResource(R.string.about_attribution),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
                         }
                     }
                 }
@@ -2340,24 +2330,30 @@ private fun SettingsScreen(
     }
 }
 
+/**
+ * A titled group of rows. Home reuses it without a title, so its detail list and
+ * the settings list are visibly the same component rather than two lookalikes.
+ */
 @Composable
 private fun SettingsGroup(
-    title: String,
+    title: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = MdSpacing.md),
+            .padding(top = if (title == null) 0.dp else MdSpacing.md),
         verticalArrangement = Arrangement.spacedBy(MdSpacing.xs),
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = MdSpacing.xs),
-        )
+        if (title != null) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = MdSpacing.xs),
+            )
+        }
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
@@ -2438,36 +2434,6 @@ private fun SettingsItem(
 }
 
 @Composable
-private fun ReadBody(title: Int, body: Int) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = MdSpacing.sm),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(MdSpacing.md),
-            modifier = Modifier.padding(MdSpacing.md),
-        ) {
-            Text(
-                stringResource(title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                stringResource(body),
-                style = MaterialTheme.typography.bodyLarge,
-                lineHeight = 26.sp,
-            )
-        }
-    }
-}
-
-@Composable
 private fun FixedLocation.displayNameForUi(): String = when {
     id.startsWith("manual:") -> stringResource(R.string.manual_location)
     LocalConfiguration.current.locales[0]?.language == "ar" -> displayNameArabic ?: displayName
@@ -2487,6 +2453,29 @@ private fun FajrMethod.localizedName(): String = stringResource(when (this) {
     FajrMethod.SINGAPORE -> R.string.method_singapore
     FajrMethod.TURKEY -> R.string.method_turkey
 })
+
+/**
+ * "12 minutes earlier" rather than "-12 minutes". Arabic drops the numeral in
+ * its one/two plural forms, which silently erased the sign when the direction
+ * was carried by a minus sign alone.
+ */
+@Composable
+private fun offsetDescription(minutes: Int): String = when {
+    minutes == 0 -> stringResource(R.string.offset_none)
+    minutes < 0 -> pluralStringResource(R.plurals.offset_earlier, -minutes, -minutes)
+    else -> pluralStringResource(R.plurals.offset_later, minutes, minutes)
+}
+
+/** The stepper readout, in the digits and sign of the active locale. */
+@Composable
+private fun signedMinutes(minutes: Int): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return remember(locale, minutes) {
+        val format = NumberFormat.getIntegerInstance(locale)
+        if (format is DecimalFormat) format.positivePrefix = "+"
+        format.format(minutes)
+    }
+}
 
 @Composable
 private fun Long.timeFor(zoneId: String): String =
@@ -2546,7 +2535,9 @@ private fun PreferenceError.labelResource() = when (this) {
 
 private fun ScheduleResult.userMessage(context: Context): String = when (this) {
     is ScheduleResult.Scheduled -> context.getString(R.string.status_healthy)
-    is ScheduleResult.TemporaryScheduled -> context.getString(R.string.test_alarm_scheduled)
+    is ScheduleResult.TemporaryScheduled -> context.getString(
+        if (degradedBy.isEmpty()) R.string.test_alarm_scheduled else R.string.test_alarm_scheduled_degraded,
+    )
     is ScheduleResult.Disabled -> context.getString(R.string.status_disabled)
     is ScheduleResult.ActionRequired -> context.getString(problem.labelResource())
     is ScheduleResult.InvalidConfiguration -> context.getString(problem.labelResource())

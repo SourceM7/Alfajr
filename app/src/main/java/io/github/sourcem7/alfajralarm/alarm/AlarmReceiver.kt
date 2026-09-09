@@ -3,6 +3,7 @@ package io.github.sourcem7.alfajralarm.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.ContextCompat
 import io.github.sourcem7.alfajralarm.app.AppGraph
 import io.github.sourcem7.alfajralarm.domain.AlarmDelivery
@@ -16,6 +17,10 @@ import kotlinx.datetime.LocalDate
  * duplicated deliveries; a delivery the coordinator accepts starts ringing.
  */
 class AlarmReceiver : BroadcastReceiver() {
+    private companion object {
+        const val TAG = "AlfajrAlarm"
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         val kind = AlarmIntents.kindOf(intent.action) ?: return
         val request = AlarmRequest(
@@ -34,10 +39,18 @@ class AlarmReceiver : BroadcastReceiver() {
                 // The coordinator has already secured the following daily alarm,
                 // so ringing can start. Delivering an exact alarm is what allows
                 // this foreground service to start from the background.
-                ContextCompat.startForegroundService(
-                    context,
-                    AlarmRingingService.startIntent(context, delivery, request.triggerAtMillis),
-                )
+                runCatching {
+                    ContextCompat.startForegroundService(
+                        context,
+                        AlarmRingingService.startIntent(context, delivery, request.triggerAtMillis),
+                    )
+                }.onFailure { error ->
+                    // Android can still refuse the start under battery or
+                    // background restrictions. Letting it escape would kill the
+                    // receiver silently; the next daily alarm is already
+                    // registered either way.
+                    Log.e(TAG, "Could not start ringing for a delivered alarm", error)
+                }
             } finally {
                 pending.finish()
             }

@@ -43,6 +43,27 @@ val CapabilityProblem.preventsDelivery: Boolean
         -> false
     }
 
+/**
+ * True when the test alarm cannot honestly be offered. The test exists to prove
+ * the ringing path, so unlike a real delivery it needs its notification: without
+ * one there is no foreground service surface, no controls, and no screen.
+ *
+ * `CONFIGURATION_INCOMPLETE` is deliberately absent. The test is offered during
+ * onboarding, before a location or method has been chosen, and it does not
+ * depend on either.
+ */
+val CapabilityProblem.blocksTestAlarm: Boolean
+    get() = when (this) {
+        CapabilityProblem.EXACT_ALARMS_UNAVAILABLE,
+        CapabilityProblem.NOTIFICATIONS_DISABLED,
+        CapabilityProblem.SCHEDULING_FAILED,
+        -> true
+
+        CapabilityProblem.CONFIGURATION_INCOMPLETE,
+        CapabilityProblem.FULL_SCREEN_UNAVAILABLE,
+        -> false
+    }
+
 data class AlarmHealth(
     val problems: List<CapabilityProblem> = emptyList(),
     val warnings: List<AlarmWarning> = emptyList(),
@@ -58,6 +79,17 @@ data class AlarmHealth(
      * They must be reported, never presented as a healthy alarm.
      */
     val degradingProblems: List<CapabilityProblem> get() = problems.filterNot { it.preventsDelivery }
+
+    /** The reason the test alarm must be refused, or null when it can be offered. */
+    val testAlarmBlocker: CapabilityProblem? get() = problems.firstOrNull { it.blocksTestAlarm }
+
+    /**
+     * Problems that leave the test alarm worth running but worse than the real
+     * thing. A missing full-screen permission is the one that matters: the test
+     * still rings, but it cannot prove the screen.
+     */
+    val testAlarmDegradations: List<CapabilityProblem>
+        get() = problems.filter { !it.blocksTestAlarm && it != CapabilityProblem.CONFIGURATION_INCOMPLETE }
 }
 
 private const val LOW_ALARM_VOLUME_FRACTION = 0.25

@@ -61,6 +61,7 @@ class RingingControllerTest {
     private val vibration = RecordingVibration()
     private val wakeLock = RecordingWakeLock()
     private val missed = RecordingMissedNotifier()
+    private val surface = RecordingRingingSurface()
 
     private fun controller(audioOverride: RecordingAlarmAudio = audio): RingingController {
         audio = audioOverride
@@ -72,6 +73,7 @@ class RingingControllerTest {
             vibration = vibration,
             wakeLock = wakeLock,
             missedNotifier = missed,
+            surface = surface,
             clock = { now },
         )
     }
@@ -94,6 +96,112 @@ class RingingControllerTest {
             AlarmRequest(AlarmKind.SNOOZE, trigger, sessionId = stateStore.current().activeSessionId()),
         ) as AlarmDelivery.Ring
         return checkNotNull(controller.start(delivery.sessionId, delivery.isTest, now))
+    }
+
+    @Test fun `a started session opens the full-screen alarm exactly once`() = runBlocking {
+        val controller = controller()
+
+        val session = ringDaily(controller)
+        // A redelivered broadcast repeats the start command for the same session.
+        controller.start(session.sessionId, session.isTest, todaysAlarm)
+
+        assertEquals(listOf(session.sessionId), surface.shown)
+    }
+
+    @Test fun `a delivery the application no longer owns opens nothing`() = runBlocking {
+        val controller = controller()
+
+        assertNull(controller.start("session-does-not-exist", isTest = false, alarmAt = todaysAlarm))
+
+        assertTrue(surface.shown.isEmpty())
+    }
+
+    @Test fun `a delivery claiming the wrong kind opens nothing`() = runBlocking {
+        val controller = controller()
+        coordinator.enableDaily()
+        now = todaysAlarm
+        val delivery = coordinator.onAlarmDelivered(
+            AlarmRequest(AlarmKind.DAILY, todaysAlarm.toEpochMilliseconds(), prayerDate = today),
+        ) as AlarmDelivery.Ring
+
+        // A test intent must not be able to borrow the daily session.
+        assertNull(controller.start(delivery.sessionId, isTest = true, alarmAt = todaysAlarm))
+
+        assertTrue(surface.shown.isEmpty())
+    }
+
+    @Test fun `the screen is asked for before the audio devices are prepared`() = runBlocking {
+        // Opening the screen must not queue behind the ringtone fallback chain,
+        // which blocks while each candidate is prepared.
+        val events = mutableListOf<String>()
+        val controller = RingingController(
+            scheduler = coordinator,
+            stateStore = stateStore,
+            preferences = PreferencesProvider { preferences },
+            audio = RecordingAlarmAudio(failing = setOf(RingtoneSource.SAVED), log = events)
+                .also { audio = it },
+            vibration = vibration,
+            wakeLock = wakeLock,
+            missedNotifier = missed,
+            surface = RecordingRingingSurface(log = events),
+            clock = { now },
+        )
+
+        val session = ringDaily(controller)
+
+        assertEquals(
+            listOf("screen:${session.sessionId}", "audio:SAVED", "audio:SYSTEM_ALARM"),
+            events,
+        )
+    }
+
+    @Test fun `a claimed session is visible before it begins ringing`() = runBlocking {
+        val controller = controller()
+
+        controller.claim("session-1")
+
+        assertEquals("session-1", controller.startingSessionId.value)
+        assertNull(controller.session.value)
+    }
+
+    @Test fun `the claim is retired only once the session is ringing`() = runBlocking {
+        val controller = controller()
+        controller.claim("session-1")
+
+        val session = ringDaily(controller)
+
+        assertEquals("session-1", session.sessionId)
+        assertNotNull(controller.session.value)
+        assertNull(controller.startingSessionId.value)
+    }
+
+    @Test fun `a dropped delivery cannot retire the claim of the alarm that is starting`() = runBlocking {
+        val controller = controller()
+        controller.claim("session-1")
+
+        assertNull(controller.start("session-unknown", isTest = false, alarmAt = todaysAlarm))
+
+        assertEquals("session-1", controller.startingSessionId.value)
+    }
+
+    @Test fun `dismissing retires the claim so the screen closes`() = runBlocking {
+        val controller = controller()
+        val session = ringDaily(controller)
+
+        controller.handle(session.sessionId, RingingCommand.DISMISS)
+
+        assertNull(controller.session.value)
+        assertNull(controller.startingSessionId.value)
+    }
+
+    @Test fun `abandoning retires the claim so the screen closes`() = runBlocking {
+        val controller = controller()
+        val session = ringDaily(controller)
+
+        controller.abandon(session.sessionId)
+
+        assertNull(controller.session.value)
+        assertNull(controller.startingSessionId.value)
     }
 
     @Test fun `the selected ringtone plays without consulting a fallback`() = runBlocking {
