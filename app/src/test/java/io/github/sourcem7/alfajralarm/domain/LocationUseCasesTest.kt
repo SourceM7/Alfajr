@@ -6,7 +6,6 @@ import org.junit.Test
 
 class LocationUseCasesTest {
     private val createManualLocation = CreateManualLocationUseCase()
-    private val suggestFajrMethod = SuggestFajrMethodUseCase()
 
     @Test fun `manual coordinates and IANA zone are validated`() {
         assertTrue(createManualLocation("33.5138", "36.2765", "Asia/Damascus") is ManualLocationResult.Valid)
@@ -22,12 +21,6 @@ class LocationUseCasesTest {
             "manual:33.5138,36.2765:Asia/Damascus",
             (result as ManualLocationResult.Valid).location.id,
         )
-    }
-
-    @Test fun `country suggestions use policy mapping with documented fallback`() {
-        assertEquals(FajrMethod.EGYPTIAN, suggestFajrMethod("SY"))
-        assertEquals(FajrMethod.UMM_AL_QURA, suggestFajrMethod("sa"))
-        assertEquals(FajrMethod.MUSLIM_WORLD_LEAGUE, suggestFajrMethod("GB"))
     }
 
     @Test fun `city search applies the product result limit`() = kotlinx.coroutines.runBlocking {

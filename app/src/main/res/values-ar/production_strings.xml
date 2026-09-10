@@ -40,8 +40,8 @@
     <string name="location_body">ابحث دون اتصال بالإنترنت. يمكنك تغيير المدينة لاحقًا.</string>
     <string name="city_results_empty">لا توجد مدينة مطابقة. جرّب تهجئة أخرى أو أدخل الإحداثيات أدناه.</string>
     <string name="manual_location_title">إدخال الإحداثيات بدلًا من اختيار مدينة</string>
-    <string name="method_title">أكِّد طريقة الحساب</string>
-    <string name="method_body">اختر طريقة الحساب التي تتبعها. الطريقة المقترحة مُعلَّمة.</string>
+    <string name="method_title">اختر طريقة الحساب</string>
+    <string name="method_body">اختر طريقة الحساب التي يتبعها مسجدك المحلي أو الجهة الموثوقة لديك.</string>
     <string name="method_selection">الطريقة المختارة: %1$s</string>
     <string name="method_pending_selection">اختر طريقة، ثم أكِّدها.</string>
     <string name="adjustments_title">اضبط وقت الاستيقاظ بدقة</string>
@@ -79,9 +79,11 @@
     <string name="settings_section_prayer">الصلاة</string>
     <string name="settings_section_alarm">المنبّه</string>
     <string name="settings_section_appearance">المظهر</string>
+    <string name="settings_section_about">حول التطبيق</string>
+    <string name="github_repository">⁦Alfajr⁩ على ⁦GitHub⁩</string>
+    <string name="github_repository_description">الشفرة المصدرية والإصدارات وتتبع المشكلات</string>
     <string name="home_view_details">التفاصيل</string>
     <string name="action_clear">مسح</string>
-    <string name="badge_suggested">مقترحة</string>
     <string name="welcome_feature_offline_title">يعمل دون اتصال تمامًا</string>
     <string name="welcome_feature_offline_desc">لا يحتاج إلى إنترنت أو حسابات أو خدمات خارجية.</string>
     <string name="welcome_feature_privacy_title">بلا تتبّع ولا جمع بيانات</string>

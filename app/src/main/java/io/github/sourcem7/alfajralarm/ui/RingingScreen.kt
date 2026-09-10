@@ -20,7 +20,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,11 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,57 +58,60 @@ import java.util.Date
 private const val DISMISS_HOLD_MILLIS = 2_000
 
 /**
- * The near-black ringing screen. Snooze is a single large tap; dismiss needs a
+ * The full-screen ringing UI. Snooze is a single large tap; dismiss needs a
  * two-second hold unless the accessibility tap preference is on, so a hand
  * brushing the screen cannot end the alarm.
  */
 @Composable
 fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -> Unit) {
-    MaterialTheme(colorScheme = ringingColors()) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            val windowLayout = currentAppWindowLayout()
-            val rootModifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .padding(24.dp)
-            if (windowLayout.showTwoPanes || windowLayout.compactHeight) {
-                Row(
-                    modifier = rootModifier,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        RingingHeader(session)
-                        RingtoneNotice(session.ringtoneSource)
-                    }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        SnoozeControl(session, onSnooze)
-                        DismissControl(session, onDismiss)
-                    }
-                }
-            } else {
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("ringing_surface"),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        val windowLayout = currentAppWindowLayout()
+        val rootModifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .padding(24.dp)
+        if (windowLayout.showTwoPanes || windowLayout.compactHeight) {
+            Row(
+                modifier = rootModifier,
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(
-                    modifier = rootModifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     RingingHeader(session)
                     RingtoneNotice(session.ringtoneSource)
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     SnoozeControl(session, onSnooze)
                     DismissControl(session, onDismiss)
                 }
+            }
+        } else {
+            Column(
+                modifier = rootModifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                RingingHeader(session)
+                RingtoneNotice(session.ringtoneSource)
+                SnoozeControl(session, onSnooze)
+                DismissControl(session, onDismiss)
             }
         }
     }
@@ -118,29 +120,27 @@ fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -
 /**
  * What the full-screen alarm shows between being opened and its session
  * existing. Android can launch this screen from the ringing notification before
- * the service has finished resolving the session, and a near-black window with
+ * the service has finished resolving the session, and an empty window with
  * nothing in it is indistinguishable from the alarm having failed.
  */
 @Composable
 fun RingingStartingScreen() {
-    MaterialTheme(colorScheme = ringingColors()) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.ringing_starting),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                )
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(0.5f))
-            }
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.ringing_starting),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+            )
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(0.5f))
         }
     }
 }
@@ -318,23 +318,3 @@ private fun RingtoneNotice(source: RingtoneSource?) {
 @Composable
 private fun formatTime(millis: Long): String =
     android.text.format.DateFormat.getTimeFormat(LocalContext.current).format(Date(millis))
-
-/**
- * A tranquil near-black dawn palette with gentle sage-green accents.
- * The ringing screen ignores the light/dark setting because it is
- * meant to be readable in a dark room without flooding it with harsh light.
- */
-private fun ringingColors() = darkColorScheme(
-    background = Color(0xFF070B08),
-    surface = Color(0xFF070B08),
-    onBackground = Color(0xFFDFE4DD),
-    onSurface = Color(0xFFDFE4DD),
-    primary = Color(0xFF8BD6A3),
-    onPrimary = Color(0xFF00391F),
-    secondaryContainer = Color(0xFF1B251F),
-    onSecondaryContainer = Color(0xFFDFE4DD),
-    surfaceContainerLow = Color(0xFF111914),
-    surfaceContainerHigh = Color(0xFF1B251F),
-    errorContainer = Color(0xFF5C201B),
-    onErrorContainer = Color(0xFFFFDAD6),
-)
