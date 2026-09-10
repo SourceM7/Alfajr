@@ -1701,9 +1701,8 @@ private fun MethodContent(
     onConfirmed: () -> Unit,
     confirmInside: Boolean = true,
 ) {
-    val suggestedMethod = preferences.location?.countryCode?.let(viewModel::suggestedMethod)
-    var candidate by remember(preferences.method, suggestedMethod) {
-        mutableStateOf(preferences.method ?: suggestedMethod.takeIf { confirmInside })
+    var candidate by remember(preferences.method) {
+        mutableStateOf(preferences.method)
     }
     val selectCandidate: (FajrMethod) -> Unit = { method ->
         candidate = method
@@ -1723,9 +1722,8 @@ private fun MethodContent(
             )
         }
 
-        items(FajrMethod.entries.toList().sortedByDescending { it == suggestedMethod }) { method ->
+        items(FajrMethod.entries.toList()) { method ->
             val isSelected = method == candidate
-            val isSuggested = method == suggestedMethod
             val containerColor by animateColorAsState(
                 targetValue = when {
                     isSelected -> MaterialTheme.colorScheme.secondaryContainer
@@ -1758,26 +1756,12 @@ private fun MethodContent(
                         Text(
                             method.localizedName(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (isSuggested || isSelected) FontWeight.Bold else FontWeight.Normal,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = when {
                                 isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
                         )
-                        if (isSuggested) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                            ) {
-                                Text(
-                                    stringResource(R.string.badge_suggested),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                        }
                     }
                     RadioButton(
                         selected = isSelected,
@@ -2297,6 +2281,24 @@ private fun SettingsScreen(
                     }
 
                     item {
+                        SettingsGroup(title = stringResource(R.string.settings_section_about)) {
+                            SettingsItem(
+                                icon = R.drawable.ic_github,
+                                headline = stringResource(R.string.github_repository),
+                                supporting = stringResource(R.string.github_repository_description),
+                                trailing = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_open_in_new),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                onClick = { context.openWebPage(APP_REPOSITORY_URL) },
+                            )
+                        }
+                    }
+
+                    item {
                         // The GeoNames line is a licence condition of the bundled
                         // city data (CC BY 4.0), not decoration. It lives here
                         // rather than behind a Licenses screen so the obligation
@@ -2566,6 +2568,10 @@ private fun Context.openLanguageSettings() {
     runCatching { startActivity(Intent(action, "package:$packageName".toUri())) }
 }
 
+private fun Context.openWebPage(url: String) {
+    runCatching { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+}
+
 private fun ringtoneIntent(context: Context, current: String?) =
     Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
         .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
@@ -2573,3 +2579,5 @@ private fun ringtoneIntent(context: Context, current: String?) =
         .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
         .putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
         .putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current?.toUri())
+
+private const val APP_REPOSITORY_URL = "https://github.com/SourceM7/Alfajr"

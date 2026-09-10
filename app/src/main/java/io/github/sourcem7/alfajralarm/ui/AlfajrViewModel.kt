@@ -19,7 +19,6 @@ import io.github.sourcem7.alfajralarm.domain.PreviewNextAlarmUseCase
 import io.github.sourcem7.alfajralarm.domain.ScheduleReason
 import io.github.sourcem7.alfajralarm.domain.ScheduleResult
 import io.github.sourcem7.alfajralarm.domain.SearchCitiesUseCase
-import io.github.sourcem7.alfajralarm.domain.SuggestFajrMethodUseCase
 import io.github.sourcem7.alfajralarm.domain.evaluateAlarmHealth
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -52,7 +51,6 @@ class AlfajrViewModel(
     private val previewNextAlarm: PreviewNextAlarmUseCase,
     private val searchCities: SearchCitiesUseCase,
     private val createManualLocation: CreateManualLocationUseCase,
-    private val suggestFajrMethod: SuggestFajrMethodUseCase,
     private val deviceZoneId: () -> String,
 ) : ViewModel() {
     private val capabilityRefresh = MutableStateFlow(0)
@@ -129,8 +127,6 @@ class AlfajrViewModel(
         if (result is ManualLocationResult.Valid) selectLocation(result.location)
         return result
     }
-
-    fun suggestedMethod(countryCode: String?): FajrMethod = suggestFajrMethod(countryCode)
 
     fun selectMethod(method: FajrMethod) = launchUpdate { preferences.updateMethod(method) }
     fun updateCorrection(minutes: Int) = launchUpdate { preferences.updateCorrection(minutes) }

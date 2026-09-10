@@ -46,6 +46,7 @@ class AlarmRingingActivity : ComponentActivity() {
         setContent {
             val session by viewModel.session.collectAsStateWithLifecycle()
             val starting by viewModel.startingSessionId.collectAsStateWithLifecycle()
+            val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
             // The session ends in the runtime; the screen follows it rather than
             // deciding for itself when the alarm is over. A claimed session that
             // has not begun still counts as ringing, so the window is never
@@ -53,15 +54,17 @@ class AlarmRingingActivity : ComponentActivity() {
             LaunchedEffect(session, starting) {
                 if (session == null && starting == null) finish()
             }
-            val active = session
-            if (active != null) {
-                RingingScreen(
-                    session = active,
-                    onSnooze = { send(AlarmRingingService.ACTION_SNOOZE, active.sessionId) },
-                    onDismiss = { send(AlarmRingingService.ACTION_DISMISS, active.sessionId) },
-                )
-            } else if (starting != null) {
-                RingingStartingScreen()
+            AlfajrTheme(dynamicColor = dynamicColor) {
+                val active = session
+                if (active != null) {
+                    RingingScreen(
+                        session = active,
+                        onSnooze = { send(AlarmRingingService.ACTION_SNOOZE, active.sessionId) },
+                        onDismiss = { send(AlarmRingingService.ACTION_DISMISS, active.sessionId) },
+                    )
+                } else if (starting != null) {
+                    RingingStartingScreen()
+                }
             }
         }
     }

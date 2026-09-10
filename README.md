@@ -38,7 +38,7 @@ reports this on its home screen and links straight to the setting.
 ## What it does
 
 - One daily alarm at the calculated Fajr time for a fixed city, searched offline
-- Ten calculation methods, with one suggested from the selected country
+- Ten calculation methods, selected explicitly by the user
 - Separate prayer-time correction and wake-up offset, applied in that order
 - A full-screen alarm over the lock screen, with snooze and hold-to-dismiss
 - Skip a single day without disturbing the recurring alarm

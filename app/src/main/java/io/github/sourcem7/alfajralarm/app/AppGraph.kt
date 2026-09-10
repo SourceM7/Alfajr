@@ -20,7 +20,6 @@ import io.github.sourcem7.alfajralarm.domain.NextOccurrenceSelector
 import io.github.sourcem7.alfajralarm.domain.CreateManualLocationUseCase
 import io.github.sourcem7.alfajralarm.domain.PreviewNextAlarmUseCase
 import io.github.sourcem7.alfajralarm.domain.SearchCitiesUseCase
-import io.github.sourcem7.alfajralarm.domain.SuggestFajrMethodUseCase
 import io.github.sourcem7.alfajralarm.ui.AlfajrViewModel
 import io.github.sourcem7.alfajralarm.ui.RingingViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -49,11 +48,13 @@ class AppGraph(context: Context) {
         previewNextAlarm = PreviewNextAlarmUseCase(nextOccurrenceSelector),
         searchCities = SearchCitiesUseCase(cityRepository),
         createManualLocation = CreateManualLocationUseCase(),
-        suggestFajrMethod = SuggestFajrMethodUseCase(),
         deviceZoneId = { kotlinx.datetime.TimeZone.currentSystemDefault().id },
     )
 
-    fun createRingingViewModel(): RingingViewModel = RingingViewModel(ringing)
+    fun createRingingViewModel(): RingingViewModel = RingingViewModel(
+        observer = ringing,
+        appearance = appearancePreferencesRepository,
+    )
 
     val scheduler = AlarmSchedulingCoordinator(
         preferences = preferencesRepository,
