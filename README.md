@@ -6,10 +6,10 @@ analytics.
 
 ## Screenshots
 
-| Home | Ringing | Settings | Setup |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/home.jpg" width="200" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="200" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="200" alt="Settings grouped into prayer and alarm sections"> | <img src="docs/screenshots/setup.jpg" width="200" alt="Welcome screen listing the offline and privacy guarantees"> |
-| Next alarm, countdown, and the values it came from | Over the lock screen, snooze or hold to dismiss | Only what a Fajr alarm needs | Offline, no tracking, calculated on device |
+| Home | Ringing | Settings |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/home.jpg" width="250" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="250" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="250" alt="Settings grouped into prayer and alarm sections"> |
+| Next alarm, countdown, and the values it came from | Over the lock screen, snooze or hold to dismiss | Only what a Fajr alarm needs |
 
 ## Install
 
