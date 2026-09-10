@@ -6,10 +6,11 @@ analytics.
 
 ## Screenshots
 
-| Home | Ringing | Settings |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/home.jpg" width="250" height="555" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="250" height="555" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="250" height="555" alt="Settings grouped into prayer and alarm sections"> |
-| Next alarm, countdown, and the values it came from | Over the lock screen, snooze or hold to dismiss | Only what a Fajr alarm needs |
+<p align="center">
+  <img src="docs/screenshots/showcase.jpg" width="750" alt="Home screen with a countdown to the next alarm, full-screen ringing alarm with snooze and hold-to-dismiss, and settings grouped into prayer and alarm sections">
+  <br>
+  <em>Home — next alarm and countdown · Ringing — snooze or hold to dismiss · Settings — only what a Fajr alarm needs</em>
+</p>
 
 ## Install
 
