@@ -8,7 +8,7 @@ analytics.
 
 | Home | Ringing | Settings |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/home.jpg" width="250" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="250" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="250" alt="Settings grouped into prayer and alarm sections"> |
+| <img src="docs/screenshots/home.jpg" width="250" height="555" alt="Home screen with a countdown to the next alarm"> | <img src="docs/screenshots/ringing.jpg" width="250" height="555" alt="Full-screen alarm with snooze and hold-to-dismiss"> | <img src="docs/screenshots/settings.jpg" width="250" height="555" alt="Settings grouped into prayer and alarm sections"> |
 | Next alarm, countdown, and the values it came from | Over the lock screen, snooze or hold to dismiss | Only what a Fajr alarm needs |
 
 ## Install
