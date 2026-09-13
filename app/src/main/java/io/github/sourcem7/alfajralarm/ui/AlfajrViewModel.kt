@@ -58,7 +58,7 @@ class AlfajrViewModel(
     private var citySearchJob: Job? = null
     private var cityCatalogueWarmUpJob: Job? = null
 
-    val uiState: StateFlow<AlfajrUiState> = combine(
+    val uiState: StateFlow<AlfajrUiState?> = combine(
         preferences.preferences,
         alarmState.state,
         appearance.dynamicColor,
@@ -73,9 +73,13 @@ class AlfajrViewModel(
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = AlfajrUiState(),
+        // Startup must wait for persisted state. Rendering the default value
+        // picks onboarding before DataStore can report an existing setup.
+        started = SharingStarted.Eagerly,
+        initialValue = null,
     )
+
+    val isInitialStateLoaded: Boolean get() = uiState.value != null
 
     val cityResults: StateFlow<List<FixedLocation>> = mutableCityResults
 

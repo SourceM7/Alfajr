@@ -9,6 +9,15 @@
         <item name="android:windowBackground">?android:attr/colorBackground</item>
     </style>
 
+    <!-- Keep the launch surface up until DataStore has selected the real first
+         route. Without it, the default state briefly renders onboarding for an
+         already configured alarm. -->
+    <style name="Theme.Alfajr.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ringing_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Alfajr</item>
+    </style>
+
     <!-- The ringing screen is deliberately near-black in every system theme and
          must not flash a light background before Compose draws. -->
     <style name="Theme.Alfajr.Ringing" parent="android:style/Theme.Material.NoActionBar">

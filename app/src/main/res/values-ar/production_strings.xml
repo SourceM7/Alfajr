@@ -55,7 +55,7 @@
     <string name="onboarding_test_body">يرنّ منبّه الاختبار بعد عشر ثوانٍ، ولا يغيّر إعداد المنبّه اليومي.</string>
     <string name="action_test_alarm">تشغيل منبّه الاختبار</string>
     <string name="test_alarm_scheduled">تمت جدولة منبّه الاختبار. سيرنّ بعد عشر ثوانٍ.</string>
-    <string name="test_alarm_scheduled_degraded">تمت جدولة منبّه الاختبار. سيرنّ بعد عشر ثوانٍ، لكنه سيظهر كإشعار بدلًا من شاشة المنبّه الكاملة.</string>
+    <string name="test_alarm_scheduled_degraded">تمت جدولة منبّه الاختبار. سيرنّ بعد عشر ثوانٍ، لكنه سيظهر كإشعار بدلًا من شاشة المنبّه الكاملة. فعّل إشعارات ملء الشاشة من إعدادات أندرويد لاختبار شاشة المنبّه الكاملة.</string>
     <string name="setup_step">%1$d من %2$d</string>
     <string name="skip_next_title">المنبّه القادم</string>
     <string name="skip_next_body">تخطَّ هذا الفجر فقط. يبقى اليوم التالي مجدولًا.</string>

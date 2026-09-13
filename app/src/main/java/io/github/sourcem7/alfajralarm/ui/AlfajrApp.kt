@@ -168,7 +168,8 @@ private object Routes {
 /** The production single-activity UI, wired with Navigation Compose. */
 @Composable
 fun AlfajrApp(viewModel: AlfajrViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadedUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState = loadedUiState ?: return
     val preferences = uiState.preferences
     val dynamicColor = uiState.dynamicColor
     val state = uiState.alarmState

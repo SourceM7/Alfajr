@@ -1,16 +1,21 @@
 package io.github.sourcem7.alfajralarm.ui
 
+import android.content.res.Configuration
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.sourcem7.alfajralarm.R
 import io.github.sourcem7.alfajralarm.domain.RingingSession
@@ -20,6 +25,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Assume.assumeTrue
 
 class RingingScreenTest {
     @get:Rule
@@ -60,7 +66,7 @@ class RingingScreenTest {
         val dismissHint = context.getString(R.string.ringing_hold_to_dismiss)
         composeRule.onNodeWithContentDescription("$dismissLabel. $dismissHint")
             .assertIsDisplayed()
-            .performClick()
+            .performSemanticsAction(SemanticsActions.OnClick)
 
         composeRule.runOnIdle { assertTrue(dismissed) }
     }
@@ -90,5 +96,39 @@ class RingingScreenTest {
             .captureToImage()
             .toPixelMap()[0, 0]
         assertEquals(background, renderedBackground)
+    }
+
+    @Test
+    fun ringingScreenUsesAndroidDynamicColorThroughAlfajrTheme() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val session = RingingSession(
+            sessionId = "dynamic-theme-test",
+            isTest = true,
+            alarmAt = Instant.fromEpochMilliseconds(0),
+            startedAt = Instant.fromEpochMilliseconds(0),
+            snoozesUsed = 0,
+            snoozeMinutes = 5,
+            tapToDismiss = false,
+            vibrating = false,
+            ringtoneSource = RingtoneSource.SYSTEM_ALARM,
+        )
+        val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val expectedBackground = if (nightMode == Configuration.UI_MODE_NIGHT_YES) {
+            dynamicDarkColorScheme(context).background
+        } else {
+            dynamicLightColorScheme(context).background
+        }
+
+        composeRule.setContent {
+            AlfajrTheme(dynamicColor = true) {
+                RingingScreen(session = session, onSnooze = {}, onDismiss = {})
+            }
+        }
+
+        val renderedBackground = composeRule.onNodeWithTag("ringing_surface")
+            .captureToImage()
+            .toPixelMap()[0, 0]
+        assertEquals(expectedBackground, renderedBackground)
     }
 }
