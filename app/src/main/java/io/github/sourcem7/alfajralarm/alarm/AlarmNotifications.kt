@@ -37,12 +37,14 @@ object AlarmNotifications {
      * and otherwise shows this as a heads-up notification, so the actions have
      * to be enough to snooze or dismiss on their own.
      *
-     * [withFullScreen] belongs only to the post that begins a ringing session.
-     * The platform evaluates a full-screen intent when a notification is first
-     * added, not when it is updated, so re-posting one buys nothing — and it
-     * costs something: a notification action arriving after the alarm ended
-     * would add a *new* record carrying the intent, which launches the ringing
-     * screen for a session that no longer exists.
+     * [withFullScreen] belongs to every post made while a session is ringing,
+     * and to none made for a snooze or dismiss command. SystemUI may evaluate
+     * the full-screen intent after a quick follow-up post has already replaced
+     * the first one, as Samsung's does, so a follow-up without the intent can
+     * leave a locked device dark with only a heads-up. A command post, though,
+     * can arrive after the alarm ended and add a *new* record; carrying the
+     * intent there would launch the ringing screen for a session that no longer
+     * exists.
      */
     fun ringing(
         context: Context,
@@ -62,6 +64,7 @@ object AlarmNotifications {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
             // The service owns audio and vibration, so the notification adds none.
             .setSilent(true)
             .setContentIntent(open)
