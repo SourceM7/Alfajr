@@ -18,13 +18,13 @@
         <item name="postSplashScreenTheme">@style/Theme.Alfajr</item>
     </style>
 
-    <!-- The ringing screen is deliberately near-black in every system theme and
-         must not flash a light background before Compose draws. -->
+    <!-- The ringing screen follows the app theme, dynamic colour included. The
+         activity goes edge to edge, so the bars stay transparent and the window
+         background approximates the Compose page colour to avoid a flash. -->
     <style name="Theme.Alfajr.Ringing" parent="android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ringing_background</item>
-        <item name="android:statusBarColor">@color/ringing_background</item>
-        <item name="android:navigationBarColor">@color/ringing_background</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/ringing_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowShowWallpaper">false</item>
     </style>
 </resources>

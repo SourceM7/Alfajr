@@ -3,4 +3,7 @@
     <!-- The Compose theme owns every in-app colour. These exist only for the
          Android window themes, which are drawn before Compose does. -->
     <color name="ringing_background">#FF05060A</color>
+    <!-- What the ringing window shows before Compose draws: the theme's page
+         colour, so a light or dynamic ringing screen does not flash black. -->
+    <color name="ringing_window_background">#FFF7FAF4</color>
 </resources>
