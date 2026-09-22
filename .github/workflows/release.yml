@@ -20,6 +20,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the legacy 'tools' package, which newer
+          # cmdline-tools no longer provide, and sdkmanager then fails.
+          packages: platform-tools
       - name: Verify the signed semantic version tag
         env:
           ALFAJR_RELEASE_TAG_SIGNING_PUBLIC_KEY: ${{ secrets.ALFAJR_RELEASE_TAG_SIGNING_PUBLIC_KEY }}

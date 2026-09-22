@@ -22,5 +22,9 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - uses: android-actions/setup-android@v3
+        with:
+          # The default also installs the legacy 'tools' package, which newer
+          # cmdline-tools no longer provide, and sdkmanager then fails.
+          packages: platform-tools
       - name: Build, test, lint, and verify release privacy
         run: ./gradlew assembleDebug assembleRelease test lint generateLicenseReport verifyReleaseManifestPrivacy
