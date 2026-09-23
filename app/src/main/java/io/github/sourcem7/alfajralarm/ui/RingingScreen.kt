@@ -68,7 +68,7 @@ fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -
         modifier = Modifier
             .fillMaxSize()
             .testTag("ringing_surface"),
-        color = MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.surface,
     ) {
         val windowLayout = currentAppWindowLayout()
         val rootModifier = Modifier
@@ -125,7 +125,7 @@ fun RingingScreen(session: RingingSession, onSnooze: () -> Unit, onDismiss: () -
  */
 @Composable
 fun RingingStartingScreen() {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -137,7 +137,7 @@ fun RingingStartingScreen() {
             Text(
                 text = stringResource(R.string.ringing_starting),
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth(0.5f))
@@ -149,8 +149,8 @@ fun RingingStartingScreen() {
 private fun RingingHeader(session: RingingSession) {
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
@@ -222,8 +222,8 @@ private fun DismissControl(session: RingingSession, onDismiss: () -> Unit) {
     // before the hold gesture could measure it.
     Surface(
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 96.dp)

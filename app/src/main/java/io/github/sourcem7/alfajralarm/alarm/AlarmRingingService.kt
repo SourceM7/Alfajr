@@ -91,7 +91,13 @@ class AlarmRingingService : Service() {
             owned = session.sessionId
             // The placeholder posted before the session was resolved cannot know
             // whether snoozes remain.
-            enterForeground(session.sessionId, session.isTest, session.alarmAt.toEpochMilliseconds(), session.snoozeAvailable)
+            enterForeground(
+                session.sessionId,
+                session.isTest,
+                session.alarmAt.toEpochMilliseconds(),
+                session.snoozeAvailable,
+                withFullScreen = true,
+            )
             startTicker()
         }
     }
@@ -153,7 +159,13 @@ class AlarmRingingService : Service() {
     private fun stopUnlessRinging() {
         val running = graph.ringing.session.value
         if (running != null) {
-            enterForeground(running.sessionId, running.isTest, running.alarmAt.toEpochMilliseconds(), running.snoozeAvailable)
+            enterForeground(
+                running.sessionId,
+                running.isTest,
+                running.alarmAt.toEpochMilliseconds(),
+                running.snoozeAvailable,
+                withFullScreen = true,
+            )
             return
         }
         ticker?.cancel()
