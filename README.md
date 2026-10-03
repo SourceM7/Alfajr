@@ -36,6 +36,13 @@ notifications* permission automatically. Without it the alarm still rings, but
 it arrives as a notification instead of covering the lock screen. The app
 reports this on its home screen and links straight to the setting.
 
+### Display over other apps
+
+Android does not let a background app open a screen while the phone is in use.
+So that the alarm takes over the screen even then, the app asks for *Display
+over other apps*. It never draws an overlay; without the permission the alarm
+still rings and shows a notification with Snooze and Dismiss instead.
+
 ## What it does
 
 - One daily alarm at the calculated Fajr time for a fixed city, searched offline

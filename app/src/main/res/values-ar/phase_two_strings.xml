@@ -17,6 +17,7 @@
     <string name="problem_exact_alarms_unavailable">لا يسمح أندرويد بالمنبّهات الدقيقة لهذا التطبيق.</string>
     <string name="problem_notifications_disabled">إشعارات المنبّه متوقفة.</string>
     <string name="problem_full_screen_unavailable">عرض المنبّه بملء الشاشة غير مسموح. سيرنّ المنبّه، لكن كإشعار فقط.</string>
+    <string name="problem_overlay_unavailable">لا يستطيع المنبّه الظهور فوق التطبيقات الأخرى. أثناء استخدام الهاتف سيرنّ كإشعار فقط.</string>
     <string name="problem_scheduling_failed">رفض أندرويد جدولة المنبّه. أُوقف المنبّه اليومي، وبقيت إعداداتك كما هي.</string>
     <string name="warning_alarm_volume_muted">صوت المنبّه مكتوم. لا يغيّر التطبيق مستوى الصوت نيابةً عنك.</string>
     <string name="warning_alarm_volume_low">مستوى صوت المنبّه منخفض جدًا.</string>
@@ -25,4 +26,5 @@
     <string name="action_grant_notifications">السماح بالإشعارات</string>
     <string name="action_exact_alarm_settings">فتح إعدادات المنبّهات والتذكيرات</string>
     <string name="action_full_screen_settings">فتح إعدادات عرض المنبّه بملء الشاشة</string>
+    <string name="action_overlay_settings">السماح بالظهور فوق التطبيقات الأخرى</string>
 </resources>

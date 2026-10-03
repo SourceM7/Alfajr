@@ -50,11 +50,15 @@
     <string name="preview_alarm">Alarm %1$s</string>
     <string name="preview_date">%1$s · Fajr date %2$s</string>
     <string name="onboarding_permissions_title">Check alarm access</string>
-    <string name="onboarding_permissions_body">Notifications let the alarm reach you; full-screen access lets it cover the lock screen instead of arriving as a notification. You can change either in Android settings at any time.</string>
-    <string name="onboarding_test_body">The test rings in ten seconds and does not change your daily Fajr alarm.</string>
+    <string name="onboarding_permissions_body">The alarm needs these to reach you and to take over the screen. You can change them in Android settings at any time.</string>
+    <string name="onboarding_test_body">Rings in ten seconds without changing your daily alarm. Lock the phone to check that the alarm screen appears.</string>
     <string name="action_test_alarm">Run test alarm</string>
     <string name="skip_next_title">Next alarm</string>
-    <string name="skip_next_body">Skip only this Fajr. The following day remains scheduled.</string>
+    <string name="skip_next_body">Skips one Fajr only.</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_undo">Undo</string>
+    <string name="action_fix">Fix</string>
+    <string name="label_with_value" translatable="false">%1$s: %2$s</string>
     <string name="outcome_title">Most recent alarm</string>
     <string name="outcome_none">No alarm outcome yet.</string>
     <string name="settings_title">Settings</string>
@@ -69,7 +73,7 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_attribution">MIT licensed · Prayer times by Adhan · City data ⁦© GeoNames, CC BY 4.0⁩</string>
     <string name="test_alarm_scheduled">Test alarm scheduled. It will ring in ten seconds.</string>
-    <string name="test_alarm_scheduled_degraded">Test alarm scheduled. It will ring in ten seconds, but it will appear as a notification rather than the full-screen alarm. Enable Full screen notifications in Android settings to test the full alarm screen.</string>
+    <string name="test_alarm_scheduled_degraded">Test alarm scheduled. It will ring in ten seconds, but the alarm screen may not appear. Fix the items under Alarm status to test the full alarm screen.</string>
     <string name="setup_step">%1$d of %2$d</string>
     <string name="content_description_open_settings">Open settings</string>
     <string name="content_description_back">Back</string>

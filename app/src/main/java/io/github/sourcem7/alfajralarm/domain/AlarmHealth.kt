@@ -6,6 +6,7 @@ enum class CapabilityProblem {
     EXACT_ALARMS_UNAVAILABLE,
     NOTIFICATIONS_DISABLED,
     FULL_SCREEN_UNAVAILABLE,
+    OVERLAY_UNAVAILABLE,
     SCHEDULING_FAILED,
 }
 
@@ -17,6 +18,8 @@ data class AlarmCapabilities(
     val notificationsEnabled: Boolean,
     val alarmChannelEnabled: Boolean,
     val canUseFullScreenIntent: Boolean,
+    /** Lets the ringing screen open over another app while the device is in use. */
+    val canDrawOverlays: Boolean,
     val alarmVolume: Int,
     val maxAlarmVolume: Int,
 )
@@ -27,9 +30,10 @@ fun interface CapabilityProbe {
 
 /**
  * True when Android cannot deliver the alarm at all, so it must not stay
- * registered. Notifications and the full-screen intent are deliberately absent:
- * Android still plays alarm audio and offers its own heads-up notification, so a
- * revoked one degrades an already-scheduled alarm instead of removing it.
+ * registered. Notifications, the full-screen intent, and the overlay permission
+ * are deliberately absent: Android still plays alarm audio and offers its own
+ * heads-up notification, so a revoked one degrades an already-scheduled alarm
+ * instead of removing it.
  */
 val CapabilityProblem.preventsDelivery: Boolean
     get() = when (this) {
@@ -40,6 +44,7 @@ val CapabilityProblem.preventsDelivery: Boolean
 
         CapabilityProblem.NOTIFICATIONS_DISABLED,
         CapabilityProblem.FULL_SCREEN_UNAVAILABLE,
+        CapabilityProblem.OVERLAY_UNAVAILABLE,
         -> false
     }
 
@@ -61,6 +66,7 @@ val CapabilityProblem.blocksTestAlarm: Boolean
 
         CapabilityProblem.CONFIGURATION_INCOMPLETE,
         CapabilityProblem.FULL_SCREEN_UNAVAILABLE,
+        CapabilityProblem.OVERLAY_UNAVAILABLE,
         -> false
     }
 
@@ -104,6 +110,7 @@ fun evaluateAlarmHealth(
         if (!capabilities.canScheduleExactAlarms) add(CapabilityProblem.EXACT_ALARMS_UNAVAILABLE)
         if (!capabilities.notificationsEnabled || !capabilities.alarmChannelEnabled) add(CapabilityProblem.NOTIFICATIONS_DISABLED)
         if (!capabilities.canUseFullScreenIntent) add(CapabilityProblem.FULL_SCREEN_UNAVAILABLE)
+        if (!capabilities.canDrawOverlays) add(CapabilityProblem.OVERLAY_UNAVAILABLE)
     }
     val warnings = buildList {
         val maximum = capabilities.maxAlarmVolume

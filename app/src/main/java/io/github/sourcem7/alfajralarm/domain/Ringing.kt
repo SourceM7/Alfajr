@@ -127,7 +127,8 @@ fun interface MissedAlarmNotifier {
  * screen, but the platform downgrades it to a heads-up notification whenever
  * the device is unlocked and in use, and withholds it entirely while the
  * full-screen-intent permission is not granted. Ringing therefore asks for the
- * screen directly as well. Implementations must tolerate a refused request:
+ * screen directly as well, which Android honours only while the application
+ * may draw over other apps. Implementations must tolerate a refused request:
  * the alarm is already sounding and the notification still carries snooze and
  * dismiss, so a refusal degrades the alarm rather than breaking it.
  */

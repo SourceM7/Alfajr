@@ -21,10 +21,8 @@
     <string name="missed_notification_title">Missed Fajr alarm</string>
     <string name="missed_notification_text">The alarm rang for ten minutes without being dismissed. The next daily alarm is still scheduled.</string>
 
-    <string name="ringtone_row">Alarm sound: %1$s</string>
     <string name="ringtone_default">Device alarm sound</string>
-    <string name="action_choose_ringtone">Choose alarm sound</string>
-    <string name="action_use_default_ringtone">Use the device alarm sound</string>
+    <string name="action_use_default_ringtone">Use default</string>
     <string name="ringtone_picker_title">Alarm sound</string>
     <string name="vibration_switch">Vibrate while ringing</string>
     <string name="tap_to_dismiss_switch">Dismiss with a single tap</string>

@@ -29,10 +29,8 @@
     <string name="missed_notification_title">فاتك منبّه الفجر</string>
     <string name="missed_notification_text">رنّ المنبّه عشر دقائق من دون إيقافه. لا يزال منبّه اليوم التالي مجدولًا.</string>
 
-    <string name="ringtone_row">صوت المنبّه: %1$s</string>
     <string name="ringtone_default">صوت المنبّه الافتراضي في الجهاز</string>
-    <string name="action_choose_ringtone">اختيار صوت المنبّه</string>
-    <string name="action_use_default_ringtone">استخدام صوت المنبّه الافتراضي</string>
+    <string name="action_use_default_ringtone">الافتراضي</string>
     <string name="ringtone_picker_title">صوت المنبّه</string>
     <string name="vibration_switch">الاهتزاز أثناء الرنين</string>
     <string name="tap_to_dismiss_switch">الإيقاف بنقرة واحدة</string>

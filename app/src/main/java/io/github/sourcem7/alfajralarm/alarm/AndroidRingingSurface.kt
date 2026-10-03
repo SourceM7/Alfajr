@@ -8,10 +8,11 @@ import io.github.sourcem7.alfajralarm.domain.RingingSurface
  * Starts [io.github.sourcem7.alfajralarm.ui.AlarmRingingActivity] directly,
  * alongside the ringing notification's full-screen intent.
  *
- * Android permits this because delivering an exact alarm opens a window in
- * which the application may start an activity from the background. That window
- * is not guaranteed on every device or version, so a refusal is logged and
- * swallowed rather than propagated.
+ * Android only honours a background activity start from an application that
+ * may draw over other apps, and it drops a refused one without throwing, so a
+ * start that returns normally proves nothing. Whether the screen can open this
+ * way is reported through the overlay capability instead; the `runCatching`
+ * covers the devices that do throw.
  */
 class AndroidRingingSurface(private val context: Context) : RingingSurface {
     override fun show(sessionId: String) {

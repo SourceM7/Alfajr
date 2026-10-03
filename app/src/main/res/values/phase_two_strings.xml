@@ -17,6 +17,7 @@
     <string name="problem_exact_alarms_unavailable">Android is not allowing exact alarms for this app.</string>
     <string name="problem_notifications_disabled">Alarm notifications are turned off.</string>
     <string name="problem_full_screen_unavailable">The full-screen alarm is not allowed. The alarm will still ring, but only as a notification.</string>
+    <string name="problem_overlay_unavailable">The alarm cannot open over other apps. While the phone is in use it will ring as a notification only.</string>
     <string name="problem_scheduling_failed">Android rejected the alarm. The daily alarm was switched off; your settings are unchanged.</string>
     <string name="warning_alarm_volume_muted">The alarm volume is muted. The app never changes it for you.</string>
     <string name="warning_alarm_volume_low">The alarm volume is very low.</string>
@@ -25,5 +26,6 @@
     <string name="action_grant_notifications">Allow notifications</string>
     <string name="action_exact_alarm_settings">Open alarms and reminders settings</string>
     <string name="action_full_screen_settings">Open full-screen alarm settings</string>
+    <string name="action_overlay_settings">Allow display over other apps</string>
 
 </resources>

@@ -65,8 +65,12 @@ object AlarmNotifications {
             .setOngoing(true)
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
-            // The service owns audio and vibration, so the notification adds none.
-            .setSilent(true)
+            // The service owns audio and vibration, and the channel is created
+            // without either, so the notification adds none. `setSilent(true)`
+            // must stay out of here: NotificationCompat implements it by filing
+            // the notification in a silent group, and SystemUI refuses both the
+            // full-screen intent and the heads-up for a notification whose
+            // group suppresses alerting. That is an alarm nobody can see.
             .setContentIntent(open)
         if (withFullScreen) builder.setFullScreenIntent(open, true)
         if (snoozeAvailable) {

@@ -29,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -102,7 +101,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -117,6 +115,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -405,7 +404,6 @@ private fun HomeScreen(
             timeZoneMismatch = AlarmWarning.TIME_ZONE_MISMATCH in warnings,
             onSkip = { report { viewModel.skipNext() } },
             onUndoSkip = { report { viewModel.undoSkip() } },
-            onTest = { report { viewModel.scheduleTest() } },
             modifier = modifier,
         )
     }
@@ -454,29 +452,15 @@ private fun HomeScreen(
                         details(Modifier.weight(1f))
                     }
                 } else {
-                    // The hero is sized from the viewport rather than left to its
-                    // content, which is what stops a short healthy state from
-                    // stranding half the screen empty. Anything that does not fit
-                    // scrolls instead of being squeezed.
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        // Landscape has no height to spare, so the hero is left
-                        // to its content there and only claims a share of a
-                        // portrait screen.
-                        val heroHeight = if (windowLayout.compactHeight) {
-                            null
-                        } else {
-                            (maxHeight * HERO_HEIGHT_FRACTION).coerceAtLeast(HERO_MIN_HEIGHT)
-                        }
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
-                                .padding(vertical = MdSpacing.sm),
-                            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-                        ) {
-                            hero(heroHeight?.let { Modifier.heightIn(min = it) } ?: Modifier)
-                            details(Modifier)
-                        }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = MdSpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+                    ) {
+                        hero(Modifier)
+                        details(Modifier)
                     }
                 }
             }
@@ -497,7 +481,7 @@ private fun HomeScreen(
                 Text(
                     stringResource(R.string.label_alarm_health),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.semantics { heading() },
                 )
                 CapabilityIssueList(problems = problems, warnings = warnings, resolve = resolve)
@@ -540,15 +524,12 @@ private fun HomeScreen(
     }
 }
 
-private const val HERO_HEIGHT_FRACTION = 0.44f
-private val HERO_MIN_HEIGHT = 260.dp
-
 /**
  * The one thing the home screen exists to answer: when does the alarm go off.
  *
  * Everything in it is centred on a single axis so there is one reading order —
- * state, countdown, time, date, switch — and it is given a share of the viewport
- * rather than only as much room as its text needs.
+ * state, countdown, time, date, switch — on one solid container, sized to its
+ * content so nothing is left empty beneath the switch.
  */
 @Composable
 private fun AlarmHero(
@@ -562,133 +543,129 @@ private fun AlarmHero(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    // A pre-dawn wash: warmest at the horizon line behind the time, fading into
-    // the page so the hero reads as part of the screen, not a card on top of it.
-    val dawn = Brush.verticalGradient(
-        colors = listOf(
-            colors.primaryContainer,
-            colors.primaryContainer.copy(alpha = 0.45f),
-            colors.surface,
-        ),
-    )
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.extraLarge)
-            .background(dawn)
-            .padding(horizontal = MdSpacing.md, vertical = MdSpacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm, Alignment.CenterVertically),
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = colors.primaryContainer,
+        contentColor = colors.onPrimaryContainer,
     ) {
-        StatusChip(
-            problems = problems,
-            warnings = warnings,
-            dailyEnabled = dailyEnabled,
-            onClick = onStatus,
-        )
-
-        if (occurrence == null) {
-            Icon(
-                painter = painterResource(R.drawable.ic_sunrise),
-                contentDescription = null,
-                tint = colors.primary,
-                modifier = Modifier.size(40.dp),
-            )
-            Text(
-                stringResource(R.string.home_setup_needed),
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-            )
-        } else {
-            val alarmMillis = occurrence.alarmInstant.toEpochMilliseconds()
-            val dateLabel = if (alarmMillis.isToday(occurrence.zoneId)) {
-                R.string.label_today
-            } else {
-                R.string.label_tomorrow
-            }
-            // Grouped for TalkBack: the countdown, time and date are one
-            // fact, not three unrelated lines.
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
-            ) {
-                countdownUntil(occurrence.alarmInstant)?.takeIf { dailyEnabled }?.let { countdown ->
-                    Text(
-                        text = countdown,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = alarmMillis.timeFor(occurrence.zoneId),
-                    style = MaterialTheme.typography.displayLarge.copy(letterSpacing = (-1.5).sp),
-                    fontWeight = FontWeight.Bold,
-                    color = colors.onSurface,
-                )
-                Text(
-                    text = stringResource(
-                        R.string.hero_alarm_date,
-                        stringResource(dateLabel),
-                        occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.onSurfaceVariant,
-                )
-            }
-
-            if (occurrence.highLatitudeRuleActive) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = null,
-                        tint = colors.tertiary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        stringResource(R.string.high_latitude_notice),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.tertiary,
-                    )
-                }
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+        Column(
             modifier = Modifier
-                .clip(CircleShape)
-                .toggleable(
-                    value = dailyEnabled,
-                    role = Role.Switch,
-                    onValueChange = onToggle,
-                )
-                .padding(horizontal = MdSpacing.sm, vertical = MdSpacing.xs),
+                .fillMaxWidth()
+                .padding(horizontal = MdSpacing.md, vertical = MdSpacing.lg),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
         ) {
-            Text(
-                stringResource(if (dailyEnabled) R.string.home_alarm_on else R.string.home_alarm_off),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+            StatusChip(
+                problems = problems,
+                warnings = warnings,
+                dailyEnabled = dailyEnabled,
+                onClick = onStatus,
             )
-            Switch(
-                checked = dailyEnabled,
-                // The whole row is the control, so the switch itself is not
-                // separately focusable or separately announced.
-                onCheckedChange = null,
-                thumbContent = if (dailyEnabled) {
-                    {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_check),
-                            contentDescription = null,
-                            modifier = Modifier.size(SwitchDefaults.IconSize),
+
+            if (occurrence == null) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sunrise),
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(40.dp),
+                )
+                Text(
+                    stringResource(R.string.home_setup_needed),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                val alarmMillis = occurrence.alarmInstant.toEpochMilliseconds()
+                val dateLabel = if (alarmMillis.isToday(occurrence.zoneId)) {
+                    R.string.label_today
+                } else {
+                    R.string.label_tomorrow
+                }
+                // Grouped for TalkBack: the countdown, time and date are one
+                // fact, not three unrelated lines.
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(MdSpacing.xxs),
+                ) {
+                    countdownUntil(occurrence.alarmInstant)?.takeIf { dailyEnabled }?.let { countdown ->
+                        Text(
+                            text = countdown,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.onPrimaryContainer.copy(alpha = 0.8f),
                         )
                     }
-                } else null,
-            )
+                    Text(
+                        text = alarmMillis.timeFor(occurrence.zoneId),
+                        style = MaterialTheme.typography.displayLarge.copy(letterSpacing = (-1.5).sp),
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onPrimaryContainer,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.hero_alarm_date,
+                            stringResource(dateLabel),
+                            occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onPrimaryContainer.copy(alpha = 0.8f),
+                    )
+                }
+
+                if (occurrence.highLatitudeRuleActive) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MdSpacing.xs),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_info),
+                            contentDescription = null,
+                            tint = colors.onPrimaryContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            stringResource(R.string.high_latitude_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MdSpacing.sm),
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .toggleable(
+                        value = dailyEnabled,
+                        role = Role.Switch,
+                        onValueChange = onToggle,
+                    )
+                    .padding(horizontal = MdSpacing.sm, vertical = MdSpacing.xs),
+            ) {
+                Text(
+                    stringResource(if (dailyEnabled) R.string.home_alarm_on else R.string.home_alarm_off),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Switch(
+                    checked = dailyEnabled,
+                    // The whole row is the control, so the switch itself is not
+                    // separately focusable or separately announced.
+                    onCheckedChange = null,
+                    thumbContent = if (dailyEnabled) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                            )
+                        }
+                    } else null,
+                )
+            }
         }
     }
 }
@@ -750,7 +727,7 @@ private fun StatusChip(
                 Text(
                     stringResource(R.string.home_view_details),
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }
@@ -760,8 +737,9 @@ private fun StatusChip(
 /**
  * Everything the hero deliberately leaves out, as one scannable list: the
  * calculated Fajr the alarm is derived from, where it is calculated for, and
- * what happened last time. Rows reuse the settings row so the two screens read
- * as the same app.
+ * what happened last time. Rows reuse the settings row, label above value, so
+ * the two screens read as the same app and a long value never squeezes its
+ * label onto two lines.
  */
 @Composable
 private fun HomeDetails(
@@ -771,117 +749,102 @@ private fun HomeDetails(
     timeZoneMismatch: Boolean,
     onSkip: () -> Unit,
     onUndoSkip: () -> Unit,
-    onTest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-    ) {
-        SettingsGroup {
-            if (occurrence != null) {
-                SettingsItem(
-                    icon = R.drawable.ic_sunrise,
-                    headline = stringResource(R.string.label_corrected_fajr),
-                    trailing = { DetailValue(occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(zoneId)) },
-                )
-                HomeDivider()
-            }
+    SettingsGroup(modifier = modifier) {
+        if (occurrence != null) {
             SettingsItem(
-                icon = R.drawable.ic_location,
-                headline = stringResource(R.string.label_selected_location),
-                // The selected zone is authoritative, so when it differs from
-                // the device's the screen shows both rather than quietly
-                // presenting a time the phone's clock contradicts.
-                supporting = listOfNotNull(
-                    stringResource(R.string.label_authoritative_zone, zoneId),
-                    if (timeZoneMismatch) {
-                        stringResource(
-                            R.string.label_device_time,
-                            System.currentTimeMillis().timeFor(ZoneId.systemDefault().id),
-                            ZoneId.systemDefault().id,
-                        )
-                    } else null,
-                ).joinToString("\n"),
-                trailing = {
-                    DetailValue(
-                        preferences.location?.displayNameForUi()
-                            ?: stringResource(R.string.no_location_selected),
-                    )
-                },
+                icon = R.drawable.ic_sunrise,
+                headline = stringResource(R.string.label_corrected_fajr),
+                trailing = { DetailValue(occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(zoneId)) },
             )
-            HomeDivider()
-            SettingsItem(
-                icon = R.drawable.ic_calculate,
-                headline = stringResource(R.string.label_calculation_method),
-                trailing = {
-                    DetailValue(
-                        preferences.method?.localizedName()
-                            ?: stringResource(R.string.error_method_required),
-                    )
-                },
-            )
-            if (state.dailyEnabled) {
-                HomeDivider()
-                val skipped = state.skippedPrayerDate
-                SettingsItem(
-                    icon = R.drawable.ic_skip,
-                    headline = stringResource(R.string.skip_next_title),
-                    supporting = skipped?.let { stringResource(R.string.skipped_date, it.dateFor(zoneId)) }
-                        ?: stringResource(R.string.skip_next_body),
-                    trailing = {
-                        FilledTonalButton(
-                            onClick = if (skipped != null) onUndoSkip else onSkip,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        ) {
-                            Text(
-                                stringResource(if (skipped != null) R.string.undo_skip else R.string.skip_next_alarm),
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                        }
-                    },
-                )
-            }
-            HomeDivider()
-            SettingsItem(
-                icon = R.drawable.ic_history,
-                headline = stringResource(R.string.outcome_title),
-                trailing = {
-                    DetailValue(
-                        state.lastOutcome?.let { stringResource(it.labelResource()) }
-                            ?: stringResource(R.string.outcome_none),
-                    )
-                },
-            )
+            RowDivider()
         }
-
-        FilledTonalButton(
-            onClick = onTest,
-            modifier = Modifier.fillMaxWidth(),
-            shape = CircleShape,
-            contentPadding = PaddingValues(vertical = 14.dp),
-        ) {
-            Text(stringResource(R.string.action_test_alarm), style = MaterialTheme.typography.labelLarge)
+        SettingsItem(
+            icon = R.drawable.ic_location,
+            headline = preferences.location?.displayNameForUi()
+                ?: stringResource(R.string.no_location_selected),
+            // The selected zone is authoritative, so when it differs from
+            // the device's the screen shows both rather than quietly
+            // presenting a time the phone's clock contradicts.
+            supporting = listOfNotNull(
+                stringResource(R.string.label_authoritative_zone, zoneId),
+                if (timeZoneMismatch) {
+                    stringResource(
+                        R.string.label_device_time,
+                        System.currentTimeMillis().timeFor(ZoneId.systemDefault().id),
+                        ZoneId.systemDefault().id,
+                    )
+                } else null,
+            ).joinToString("\n"),
+        )
+        RowDivider()
+        SettingsItem(
+            icon = R.drawable.ic_calculate,
+            headline = stringResource(R.string.label_calculation_method),
+            supporting = preferences.method?.localizedName()
+                ?: stringResource(R.string.error_method_required),
+        )
+        if (state.dailyEnabled) {
+            RowDivider()
+            SkipNextItem(state = state, zoneId = zoneId, onSkip = onSkip, onUndoSkip = onUndoSkip)
         }
+        RowDivider()
+        SettingsItem(
+            icon = R.drawable.ic_history,
+            headline = stringResource(R.string.outcome_title),
+            supporting = state.lastOutcome?.let { stringResource(it.labelResource()) }
+                ?: stringResource(R.string.outcome_none),
+        )
     }
+}
+
+/** Skip, or undo the skip of, the next Fajr. Shared by home and settings. */
+@Composable
+private fun SkipNextItem(
+    state: AlarmState,
+    zoneId: String,
+    onSkip: () -> Unit,
+    onUndoSkip: () -> Unit,
+) {
+    val skipped = state.skippedPrayerDate
+    SettingsItem(
+        icon = R.drawable.ic_skip,
+        headline = stringResource(R.string.skip_next_title),
+        supporting = skipped?.let { stringResource(R.string.skipped_date, it.dateFor(zoneId)) }
+            ?: stringResource(R.string.skip_next_body),
+        trailing = {
+            TextButton(onClick = if (skipped != null) onUndoSkip else onSkip) {
+                Text(stringResource(if (skipped != null) R.string.action_undo else R.string.action_skip))
+            }
+        },
+    )
 }
 
 @Composable
 private fun DetailValue(text: String) {
     Text(
         text,
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
+        style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.End,
     )
 }
 
 @Composable
-private fun HomeDivider() {
+private fun RowDivider() {
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+}
+
+@Composable
+private fun ChevronTrailing() {
+    Icon(
+        painter = painterResource(R.drawable.ic_chevron_right),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /**
@@ -938,7 +901,6 @@ private fun CapabilityIssueList(
                     stringResource(problem.labelResource()),
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
                 )
                 FilledTonalButton(
                     onClick = { resolve(problem) },
@@ -1080,9 +1042,12 @@ private fun OnboardingWizard(
                             nextEnabled = when (step) {
                                 1 -> preferences.location != null
                                 2 -> preferences.method != null
+                                // The scheduler refuses activation on any
+                                // problem, degrading ones included, so the
+                                // button must not offer what it will reject.
                                 3 -> preferences.location != null &&
                                     preferences.method != null &&
-                                    problems.none { it.preventsDelivery }
+                                    problems.isEmpty()
                                 else -> true
                             },
                             nextLabel = if (step == totalSteps) {
@@ -1169,7 +1134,7 @@ private fun WelcomeStep(onStart: () -> Unit) {
         Text(
             stringResource(R.string.welcome_title),
             style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             modifier = Modifier.semantics { heading() },
         )
@@ -1212,11 +1177,7 @@ private fun WelcomeStep(onStart: () -> Unit) {
             shape = CircleShape,
             onClick = onStart,
         ) {
-            Text(
-                stringResource(R.string.action_begin_setup),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Text(stringResource(R.string.action_begin_setup), style = MaterialTheme.typography.titleMedium)
         }
     }
 }
@@ -1231,7 +1192,7 @@ private fun WelcomePromise(icon: Int, title: String, body: String) {
             painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
@@ -1260,7 +1221,7 @@ private fun ReviewAndEnableStep(
             Text(
                 stringResource(R.string.setup_review_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.semantics { heading() },
             )
         }
@@ -1293,101 +1254,67 @@ private fun ReviewAndEnableStep(
             item { PermissionsStep(problems = problems, resolve = resolve) }
         }
         item {
-            TextButton(onClick = onTest) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_alarm_notification),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+            Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.xs)) {
+                FilledTonalButton(onClick = onTest, shape = CircleShape) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_alarm_notification),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(MdSpacing.xs))
+                    Text(stringResource(R.string.action_test_alarm))
+                }
+                Text(
+                    stringResource(R.string.onboarding_test_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.width(MdSpacing.xs))
-                Text(stringResource(R.string.action_test_alarm))
             }
         }
     }
 }
 
+/**
+ * What still stands between the user and a working alarm, one row each. A
+ * problem that stops the alarm outright is marked in the error colour; one that
+ * only degrades it keeps the ordinary tint.
+ */
 @Composable
 private fun PermissionsStep(problems: List<CapabilityProblem>, resolve: (CapabilityProblem) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(
-            modifier = Modifier.padding(MdSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(MdSpacing.sm),
-        ) {
-            Text(
-                stringResource(R.string.onboarding_permissions_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                stringResource(R.string.onboarding_permissions_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (problems.isEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_check),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                        Text(
-                            stringResource(R.string.status_healthy),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                }
-            } else {
-                problems.forEach { problem ->
-                    val isRequired = problem.preventsDelivery
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isRequired) {
-                                MaterialTheme.colorScheme.errorContainer
-                            } else {
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            },
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+    Column(verticalArrangement = Arrangement.spacedBy(MdSpacing.xs)) {
+        Text(
+            stringResource(R.string.onboarding_permissions_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            stringResource(R.string.onboarding_permissions_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SettingsGroup {
+            problems.forEachIndexed { index, problem ->
+                if (index > 0) RowDivider()
+                val action = stringResource(problem.actionResource())
+                SettingsItem(
+                    icon = R.drawable.ic_warning,
+                    iconTint = if (problem.preventsDelivery) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    headline = stringResource(problem.labelResource()),
+                    headlineStyle = MaterialTheme.typography.bodyMedium,
+                    trailing = {
+                        FilledTonalButton(
+                            onClick = { resolve(problem) },
+                            shape = CircleShape,
+                            modifier = Modifier.semantics { contentDescription = action },
                         ) {
-                            Text(
-                                stringResource(problem.labelResource()),
-                                color = if (isRequired) {
-                                    MaterialTheme.colorScheme.onErrorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            FilledTonalButton(
-                                onClick = { resolve(problem) },
-                                shape = CircleShape,
-                            ) {
-                                Text(stringResource(problem.actionResource()))
-                            }
+                            Text(stringResource(R.string.action_fix))
                         }
-                    }
-                }
+                    },
+                )
             }
         }
     }
@@ -1407,7 +1334,7 @@ private fun WizardControls(
         enabled = nextEnabled,
         onClick = onNext,
     ) {
-        Text(nextLabel)
+        Text(nextLabel, style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -1441,7 +1368,7 @@ private fun LocationContent(
             Text(
                 stringResource(R.string.location_title),
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
         }
         item {
@@ -1474,7 +1401,7 @@ private fun LocationContent(
                         headlineContent = {
                             Text(
                                 location.displayNameForUi(),
-                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.titleMedium,
                             )
                         },
                         supportingContent = {
@@ -1579,7 +1506,7 @@ private fun LocationContent(
                                 painter = painterResource(R.drawable.ic_location),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     },
@@ -1587,7 +1514,6 @@ private fun LocationContent(
                         Text(
                             city.displayNameForUi(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
                         )
                     },
                     supportingContent = {
@@ -1628,7 +1554,7 @@ private fun LocationContent(
                     Text(
                         stringResource(R.string.manual_location_title),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     OutlinedTextField(
                         value = latitude,
@@ -1757,7 +1683,6 @@ private fun MethodContent(
                         Text(
                             method.localizedName(),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = when {
                                 isSelected -> MaterialTheme.colorScheme.onSecondaryContainer
                                 else -> MaterialTheme.colorScheme.onSurface
@@ -1788,7 +1713,7 @@ private fun MethodContent(
                     enabled = selected != null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(56.dp),
                     shape = CircleShape,
                     onClick = {
                         selected?.let { method ->
@@ -1797,7 +1722,7 @@ private fun MethodContent(
                         }
                     },
                 ) {
-                    Text(stringResource(R.string.action_confirm_method))
+                    Text(stringResource(R.string.action_confirm_method), style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
@@ -1866,8 +1791,8 @@ private fun OffsetControl(
         ) {
             Text(
                 label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
             )
             // The direction is spelled out rather than left to a minus sign,
             // which Arabic plurals drop along with the number they qualify.
@@ -1920,7 +1845,7 @@ private fun OffsetControl(
                         text = signedMinutes(value),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -1962,7 +1887,7 @@ private fun PreviewCard(occurrence: FajrOccurrence?) {
             Text(
                 stringResource(R.string.preview_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
             )
             if (occurrence == null) {
                 Text(
@@ -1979,16 +1904,14 @@ private fun PreviewCard(occurrence: FajrOccurrence?) {
                         occurrence.prayerLocalDate.dateFor(occurrence.zoneId),
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     stringResource(
                         R.string.preview_corrected,
                         occurrence.correctedPrayerInstant.toEpochMilliseconds().timeFor(occurrence.zoneId),
                     ),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
                     stringResource(
@@ -1997,7 +1920,7 @@ private fun PreviewCard(occurrence: FajrOccurrence?) {
                     ),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 if (occurrence.highLatitudeRuleActive) {
                     Text(
@@ -2080,42 +2003,29 @@ private fun SettingsScreen(
                                 headline = stringResource(R.string.settings_location),
                                 supporting = preferences.location?.displayNameForUi()
                                     ?: stringResource(R.string.no_location_selected),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                trailing = { ChevronTrailing() },
                                 onClick = onLocation,
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            RowDivider()
                             SettingsItem(
                                 icon = R.drawable.ic_calculate,
                                 headline = stringResource(R.string.settings_method),
                                 supporting = preferences.method?.localizedName()
                                     ?: stringResource(R.string.error_method_required),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                trailing = { ChevronTrailing() },
                                 onClick = onMethod,
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            RowDivider()
                             SettingsItem(
                                 icon = R.drawable.ic_tune,
                                 headline = stringResource(R.string.settings_adjustments),
-                                supporting = stringResource(R.string.adjustments_body),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                supporting = listOf(
+                                    R.string.label_prayer_correction to preferences.correctionMinutes,
+                                    R.string.label_wake_offset to preferences.wakeOffsetMinutes,
+                                ).map { (label, minutes) ->
+                                    stringResource(R.string.label_with_value, stringResource(label), offsetDescription(minutes))
+                                }.joinToString("\n"),
+                                trailing = { ChevronTrailing() },
                                 onClick = onAdjustments,
                             )
                         }
@@ -2127,34 +2037,19 @@ private fun SettingsScreen(
                             SettingsItem(
                                 icon = R.drawable.ic_music,
                                 headline = stringResource(R.string.settings_sound),
-                                supporting = stringResource(
-                                    R.string.ringtone_row,
-                                    ringtoneTitle,
-                                ),
+                                supporting = ringtoneTitle,
                                 trailing = {
-                                    FilledTonalButton(
-                                        onClick = { ringtonePicker.launch(ringtoneIntent(context, preferences.ringtoneUri)) },
-                                        shape = CircleShape,
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                    ) {
-                                        Text(stringResource(R.string.action_choose_ringtone), style = MaterialTheme.typography.labelMedium)
+                                    if (preferences.ringtoneUri != null) {
+                                        TextButton(onClick = { viewModel.updateRingtone(null) }) {
+                                            Text(stringResource(R.string.action_use_default_ringtone))
+                                        }
+                                    } else {
+                                        ChevronTrailing()
                                     }
                                 },
+                                onClick = { ringtonePicker.launch(ringtoneIntent(context, preferences.ringtoneUri)) },
                             )
-                            if (preferences.ringtoneUri != null) {
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = MdSpacing.md, vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.End,
-                                ) {
-                                    TextButton(onClick = { viewModel.updateRingtone(null) }) {
-                                        Text(stringResource(R.string.action_use_default_ringtone))
-                                    }
-                                }
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            RowDivider()
                             SettingsItem(
                                 icon = R.drawable.ic_vibration,
                                 headline = stringResource(R.string.vibration_switch),
@@ -2166,27 +2061,26 @@ private fun SettingsScreen(
                                 },
                                 onClick = { viewModel.updateVibration(!preferences.vibrationEnabled) },
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            Column(modifier = Modifier.padding(horizontal = MdSpacing.md, vertical = 12.dp)) {
-                                Text(
-                                    stringResource(R.string.snooze_length_label),
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                    listOf(5, 10).forEachIndexed { index, minutes ->
-                                        SegmentedButton(
-                                            selected = preferences.snoozeMinutes == minutes,
-                                            onClick = { viewModel.updateSnoozeMinutes(minutes) },
-                                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
-                                            label = { Text(pluralStringResource(R.plurals.snooze_length_option, minutes, minutes)) },
-                                        )
-                                    }
-                                }
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            RowDivider()
                             SettingsItem(
-                                icon = R.drawable.ic_tune,
+                                icon = R.drawable.ic_snooze,
+                                headline = stringResource(R.string.snooze_length_label),
+                                below = {
+                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                        listOf(5, 10).forEachIndexed { index, minutes ->
+                                            SegmentedButton(
+                                                selected = preferences.snoozeMinutes == minutes,
+                                                onClick = { viewModel.updateSnoozeMinutes(minutes) },
+                                                shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                                                label = { Text(pluralStringResource(R.plurals.snooze_length_option, minutes, minutes)) },
+                                            )
+                                        }
+                                    }
+                                },
+                            )
+                            RowDivider()
+                            SettingsItem(
+                                icon = R.drawable.ic_touch,
                                 headline = stringResource(R.string.tap_to_dismiss_switch),
                                 supporting = stringResource(R.string.tap_to_dismiss_description),
                                 trailing = {
@@ -2197,45 +2091,27 @@ private fun SettingsScreen(
                                 },
                                 onClick = { viewModel.updateTapToDismiss(!preferences.tapToDismiss) },
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            RowDivider()
                             SettingsItem(
                                 icon = R.drawable.ic_alarm_notification,
                                 headline = stringResource(R.string.action_test_alarm),
                                 supporting = stringResource(R.string.onboarding_test_body),
-                                trailing = {
-                                    FilledTonalButton(
-                                        onClick = {
-                                            scope.launch {
-                                                snackbar.showSnackbar(viewModel.scheduleTest().userMessage(context))
-                                            }
-                                        },
-                                        shape = CircleShape,
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                    ) {
-                                        Text(stringResource(R.string.action_test_alarm), style = MaterialTheme.typography.labelMedium)
+                                onClick = {
+                                    scope.launch {
+                                        snackbar.showSnackbar(viewModel.scheduleTest().userMessage(context))
                                     }
                                 },
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            SettingsItem(
-                                icon = R.drawable.ic_skip,
-                                headline = stringResource(R.string.skip_next_title),
-                                supporting = state.skippedPrayerDate?.let {
-                                    stringResource(R.string.skipped_date, it.dateFor(preferences.location?.zoneId ?: ZoneId.systemDefault().id))
-                                } ?: stringResource(R.string.skip_next_body),
-                                trailing = {
-                                    if (state.skippedPrayerDate == null) {
-                                        TextButton(onClick = { scope.launch { snackbar.showSnackbar(viewModel.skipNext().userMessage(context)) } }) {
-                                            Text(stringResource(R.string.skip_next_alarm))
-                                        }
-                                    } else {
-                                        TextButton(onClick = { scope.launch { snackbar.showSnackbar(viewModel.undoSkip().userMessage(context)) } }) {
-                                            Text(stringResource(R.string.undo_skip))
-                                        }
-                                    }
-                                },
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            if (state.dailyEnabled) {
+                                RowDivider()
+                                SkipNextItem(
+                                    state = state,
+                                    zoneId = preferences.location?.zoneId ?: ZoneId.systemDefault().id,
+                                    onSkip = { scope.launch { snackbar.showSnackbar(viewModel.skipNext().userMessage(context)) } },
+                                    onUndoSkip = { scope.launch { snackbar.showSnackbar(viewModel.undoSkip().userMessage(context)) } },
+                                )
+                            }
+                            RowDivider()
                             SettingsItem(
                                 icon = R.drawable.ic_history,
                                 headline = stringResource(R.string.outcome_title),
@@ -2261,21 +2137,13 @@ private fun SettingsScreen(
                                     },
                                     onClick = { viewModel.updateDynamicColor(!dynamicColor) },
                                 )
-                                HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                )
+                                RowDivider()
                             }
                             SettingsItem(
                                 icon = R.drawable.ic_language,
                                 headline = stringResource(R.string.language_settings),
                                 supporting = stringResource(R.string.language_settings_description),
-                                trailing = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_chevron_right),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
+                                trailing = { ChevronTrailing() },
                                 onClick = { context.openLanguageSettings() },
                             )
                         }
@@ -2340,10 +2208,11 @@ private fun SettingsScreen(
 @Composable
 private fun SettingsGroup(
     title: String? = null,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(top = if (title == null) 0.dp else MdSpacing.md),
         verticalArrangement = Arrangement.spacedBy(MdSpacing.xs),
@@ -2352,9 +2221,9 @@ private fun SettingsGroup(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = MdSpacing.xs),
+                modifier = Modifier.padding(horizontal = MdSpacing.md),
             )
         }
         Card(
@@ -2384,12 +2253,19 @@ private fun rememberRingtoneTitle(uri: String?): String {
     }
 }
 
+/**
+ * One row of a [SettingsGroup]. [below] sits under the text, inside the text
+ * column, for a control too wide to share the line with its label.
+ */
 @Composable
 private fun SettingsItem(
     icon: Int,
     headline: String,
     supporting: String? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    headlineStyle: TextStyle = MaterialTheme.typography.titleMedium,
     trailing: @Composable (() -> Unit)? = null,
+    below: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val modifier = Modifier
@@ -2399,7 +2275,7 @@ private fun SettingsItem(
 
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (below == null) Alignment.CenterVertically else Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
@@ -2412,15 +2288,18 @@ private fun SettingsItem(
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = iconTint,
                 modifier = Modifier.size(20.dp),
             )
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 headline,
-                style = MaterialTheme.typography.titleMedium,
+                style = headlineStyle,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (!supporting.isNullOrEmpty()) {
@@ -2429,6 +2308,10 @@ private fun SettingsItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (below != null) {
+                Spacer(Modifier.height(MdSpacing.xs))
+                below()
             }
         }
 
@@ -2505,6 +2388,7 @@ private fun CapabilityProblem.labelResource() = when (this) {
     CapabilityProblem.EXACT_ALARMS_UNAVAILABLE -> R.string.problem_exact_alarms_unavailable
     CapabilityProblem.NOTIFICATIONS_DISABLED -> R.string.problem_notifications_disabled
     CapabilityProblem.FULL_SCREEN_UNAVAILABLE -> R.string.problem_full_screen_unavailable
+    CapabilityProblem.OVERLAY_UNAVAILABLE -> R.string.problem_overlay_unavailable
     CapabilityProblem.SCHEDULING_FAILED -> R.string.problem_scheduling_failed
 }
 
@@ -2512,6 +2396,7 @@ private fun CapabilityProblem.actionResource() = when (this) {
     CapabilityProblem.NOTIFICATIONS_DISABLED -> R.string.action_grant_notifications
     CapabilityProblem.EXACT_ALARMS_UNAVAILABLE -> R.string.action_exact_alarm_settings
     CapabilityProblem.FULL_SCREEN_UNAVAILABLE -> R.string.action_full_screen_settings
+    CapabilityProblem.OVERLAY_UNAVAILABLE -> R.string.action_overlay_settings
     else -> R.string.action_settings
 }
 
@@ -2537,7 +2422,9 @@ private fun PreferenceError.labelResource() = when (this) {
 }
 
 private fun ScheduleResult.userMessage(context: Context): String = when (this) {
-    is ScheduleResult.Scheduled -> context.getString(R.string.status_healthy)
+    is ScheduleResult.Scheduled -> context.getString(
+        if (isDegraded) R.string.status_degraded else R.string.status_healthy,
+    )
     is ScheduleResult.TemporaryScheduled -> context.getString(
         if (degradedBy.isEmpty()) R.string.test_alarm_scheduled else R.string.test_alarm_scheduled_degraded,
     )
@@ -2555,6 +2442,7 @@ private fun Context.openCapabilitySettings(problem: CapabilityProblem) {
         CapabilityProblem.FULL_SCREEN_UNAVAILABLE -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, appUri)
         } else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, appUri)
+        CapabilityProblem.OVERLAY_UNAVAILABLE -> Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, appUri)
         else -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
     }
     runCatching { startActivity(intent) }

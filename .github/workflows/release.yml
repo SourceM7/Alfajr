@@ -73,6 +73,8 @@ jobs:
             Force-stop can suppress scheduled alarms until the app is reopened. OEM power managers, Do Not Disturb policy, and Bluetooth routing are device-controlled.
 
             On Android 14 and newer the full-screen alarm needs the "Full screen notifications" permission, which is not granted automatically to a sideloaded build. Until it is granted the alarm still rings, but arrives as a notification rather than covering the lock screen. The app reports this on its home screen and links straight to the setting. Verify one real alarm before relying on a device.
+
+            So that the alarm can open over an app that is in use, the app asks for "Display over other apps". It never draws an overlay. On some devices a sideloaded build must first be allowed restricted settings in App info before that switch can be turned on.
           files: |
             app/build/outputs/apk/release/AlfajrAlarm-*.apk
             app/build/outputs/apk/release/AlfajrAlarm-*.apk.sha256

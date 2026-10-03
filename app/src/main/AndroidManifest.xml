@@ -18,6 +18,11 @@
          does not launch the full-screen alarm. Android is moving
          ACQUIRE_CAUSES_WAKEUP behind this permission. -->
     <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
+    <!-- Android blocks an activity started from the background unless the
+         application may draw over other apps. No overlay window is ever drawn;
+         the permission is held only so the ringing screen can open over
+         whatever is in use when the alarm goes off. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 

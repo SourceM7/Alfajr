@@ -39,6 +39,7 @@ is overwritten by the next one.
 | `USE_EXACT_ALARM` (`SCHEDULE_EXACT_ALARM` on Android 12/12L) | Ring at the exact calculated time. The app is solely an alarm clock. |
 | `POST_NOTIFICATIONS` | Show the ringing alarm and missed-alarm messages. |
 | `USE_FULL_SCREEN_INTENT` | Show the alarm screen over the lock screen. |
+| `SYSTEM_ALERT_WINDOW` (*Display over other apps*) | Open the alarm screen while the phone is unlocked and in use. Android blocks a background app from opening a screen without it. The app never draws an overlay. |
 | `RECEIVE_BOOT_COMPLETED` | Re-establish the next alarm after a restart. |
 
 ## Removing your data

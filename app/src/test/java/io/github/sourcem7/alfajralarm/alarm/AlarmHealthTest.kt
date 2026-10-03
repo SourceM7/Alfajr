@@ -23,6 +23,7 @@ class AlarmHealthTest {
             CapabilityProblem.NOTIFICATIONS_DISABLED to healthyCapabilities().copy(notificationsEnabled = false),
             CapabilityProblem.NOTIFICATIONS_DISABLED to healthyCapabilities().copy(alarmChannelEnabled = false),
             CapabilityProblem.FULL_SCREEN_UNAVAILABLE to healthyCapabilities().copy(canUseFullScreenIntent = false),
+            CapabilityProblem.OVERLAY_UNAVAILABLE to healthyCapabilities().copy(canDrawOverlays = false),
         )
 
         cases.forEach { (problem, capabilities) ->
@@ -42,6 +43,21 @@ class AlarmHealthTest {
 
         assertNull(health.testAlarmBlocker)
         assertEquals(listOf(CapabilityProblem.FULL_SCREEN_UNAVAILABLE), health.testAlarmDegradations)
+    }
+
+    @Test fun `a missing overlay permission degrades the alarm without stopping it`() {
+        // Without it the ringing screen cannot open over an app in use, but the
+        // alarm still sounds and the notification still carries its controls.
+        val health = evaluateAlarmHealth(
+            testPreferences(),
+            healthyCapabilities().copy(canDrawOverlays = false),
+            DAMASCUS.zoneId,
+        )
+
+        assertEquals(emptyList<CapabilityProblem>(), health.fatalProblems)
+        assertEquals(listOf(CapabilityProblem.OVERLAY_UNAVAILABLE), health.degradingProblems)
+        assertNull(health.testAlarmBlocker)
+        assertEquals(listOf(CapabilityProblem.OVERLAY_UNAVAILABLE), health.testAlarmDegradations)
     }
 
     @Test fun `incomplete configuration never blocks the test alarm`() {

@@ -46,6 +46,7 @@ internal fun healthyCapabilities() = AlarmCapabilities(
     notificationsEnabled = true,
     alarmChannelEnabled = true,
     canUseFullScreenIntent = true,
+    canDrawOverlays = true,
     alarmVolume = 6,
     maxAlarmVolume = 7,
 )
