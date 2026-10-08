@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import io.github.sourcem7.alfajralarm.app.AppGraph
 import io.github.sourcem7.alfajralarm.ui.AlfajrApp
 import io.github.sourcem7.alfajralarm.ui.AlfajrViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val graph: AppGraph by lazy { AppGraph.from(this) }
@@ -33,5 +34,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Opening the app is the recovery path after force-stop and OEM power management.
         viewModel.onAppResumed()
+        // Covers a change of app language, which reaches no receiver.
+        graph.scope.launch { graph.widgets.refreshAll() }
     }
 }

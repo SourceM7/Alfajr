@@ -151,8 +151,6 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Date
-import java.util.TimeZone
 import kotlin.math.roundToInt
 
 private object Routes {
@@ -2320,11 +2318,8 @@ private fun SettingsItem(
 }
 
 @Composable
-private fun FixedLocation.displayNameForUi(): String = when {
-    id.startsWith("manual:") -> stringResource(R.string.manual_location)
-    LocalConfiguration.current.locales[0]?.language == "ar" -> displayNameArabic ?: displayName
-    else -> displayName
-}
+private fun FixedLocation.displayNameForUi(): String =
+    displayNameFor(LocalContext.current, LocalConfiguration.current.locales[0])
 
 @Composable
 private fun FajrMethod.localizedName(): String = stringResource(when (this) {
@@ -2364,21 +2359,10 @@ private fun signedMinutes(minutes: Int): String {
 }
 
 @Composable
-private fun Long.timeFor(zoneId: String): String =
-    android.text.format.DateFormat.getTimeFormat(LocalContext.current).apply {
-        timeZone = TimeZone.getTimeZone(zoneId)
-    }.format(Date(this))
+private fun Long.timeFor(zoneId: String): String = LocalContext.current.formatTime(this, zoneId)
 
 @Composable
-private fun LocalDate.dateFor(zoneId: String): String =
-    android.text.format.DateFormat.getDateFormat(LocalContext.current).apply {
-        timeZone = TimeZone.getTimeZone(zoneId)
-    }.format(
-        Date.from(
-            java.time.LocalDateTime.of(year, month.ordinal + 1, day, 0, 0)
-                .atZone(ZoneId.of(zoneId)).toInstant()
-        )
-    )
+private fun LocalDate.dateFor(zoneId: String): String = LocalContext.current.formatDate(this, zoneId)
 
 private fun Long.isToday(zoneId: String): Boolean =
     Instant.ofEpochMilli(this).atZone(ZoneId.of(zoneId)).toLocalDate() == java.time.LocalDate.now(ZoneId.of(zoneId))

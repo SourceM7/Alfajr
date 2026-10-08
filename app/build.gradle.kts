@@ -88,6 +88,10 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.glance.appwidget)
+    // Glance only asks for WorkManager 2.7, which predates the receiver and
+    // foreground-service rules of the SDK levels this app targets.
+    implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
@@ -126,6 +130,8 @@ tasks.register("verifyReleaseManifestPrivacy") {
         "prohibitedPermissions",
         setOf(
             "android.permission.INTERNET",
+            // Glance pulls in WorkManager, which asks for it; the manifest removes it.
+            "android.permission.ACCESS_NETWORK_STATE",
             "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.ACCESS_FINE_LOCATION",
             "android.permission.ACCESS_BACKGROUND_LOCATION",

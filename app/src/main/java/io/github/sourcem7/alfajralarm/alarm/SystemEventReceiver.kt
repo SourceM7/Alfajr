@@ -10,16 +10,21 @@ import kotlinx.coroutines.launch
 /**
  * Android drops scheduled alarms across reboots, clock changes, and package
  * replacement. The receiver does no work itself; it enqueues one serialized
- * recalculation and exits.
+ * recalculation and a widget redraw, and exits.
  */
 class SystemEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val reason = reasonFor(intent.action) ?: return
+        val reason = reasonFor(intent.action)
+        // A language change needs no alarm work, only widgets in the new language.
+        if (reason == null && intent.action != Intent.ACTION_LOCALE_CHANGED) return
         val graph = AppGraph.from(context)
         val pending = goAsync()
         graph.scope.launch {
             try {
-                graph.scheduler.scheduleNext(reason)
+                reason?.let { graph.scheduler.scheduleNext(it) }
+                // A clock or 12/24-hour change can leave stored state untouched
+                // while every displayed time is now wrong.
+                graph.widgets.refreshAll()
             } finally {
                 pending.finish()
             }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget picker -->
+    <string name="widget_sky_label">Dawn sky</string>
+    <string name="widget_sky_description">Your next Fajr alarm under a sky that brightens as dawn nears.</string>
+    <string name="widget_pill_label">Next Fajr</string>
+    <string name="widget_pill_description">The alarm time in a small space.</string>
+    <string name="widget_ring_label">Fajr countdown</string>
+    <string name="widget_ring_description">A ring that fills through the night until the alarm.</string>
+    <string name="widget_lock_label">Fajr for the lock screen</string>
+    <string name="widget_lock_description">Large and dim for the lock screen. Your city stays hidden.</string>
+
+    <!-- Widget content -->
+    <string name="widget_fajr">Fajr</string>
+    <string name="widget_rings_in">Rings in</string>
+    <string name="widget_alarm_off">Alarm off</string>
+    <string name="widget_setup_needed">Set up your Fajr alarm</string>
+    <string name="widget_needs_attention">Alarm needs attention</string>
+    <string name="widget_ringing">Alarm ringing</string>
+    <string name="widget_snoozed">Snoozed</string>
+
+    <!-- Read aloud by TalkBack as a single fact. -->
+    <string name="widget_a11y_scheduled">Fajr alarm at %1$s, %2$s</string>
+    <string name="widget_a11y_snoozed">Fajr alarm snoozed until %1$s</string>
+    <string name="widget_a11y_preview">%1$s. Fajr alarm would ring at %2$s, %3$s</string>
+
+    <!-- "Fajr · Tomorrow". A format, because resource strings lose the spaces around a bare separator. -->
+    <string name="widget_eyebrow" translatable="false">%1$s · %2$s</string>
+
+    <!-- Static widget-picker previews -->
+    <string name="widget_preview_time" translatable="false">4:32</string>
+</resources>

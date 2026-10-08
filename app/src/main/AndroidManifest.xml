@@ -25,6 +25,11 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- WorkManager, which Glance runs widget sessions on, asks for network
+         state for job constraints this app never sets. The app is offline. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <application
         android:name=".app.AlfajrApplication"
@@ -85,8 +90,61 @@
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- Home-screen and lock-screen widgets. Display only: none of them
+             can change the alarm, and each opens the app when tapped. -->
+        <receiver
+            android:name=".widget.DawnSkyWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_sky_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_sky" />
+        </receiver>
+        <receiver
+            android:name=".widget.FajrPillWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_pill_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_pill" />
+        </receiver>
+        <receiver
+            android:name=".widget.FajrRingWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_ring_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_ring" />
+        </receiver>
+        <receiver
+            android:name=".widget.FajrLockWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_lock_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_lock" />
+        </receiver>
+
+        <!-- Clock-driven widget redraws. Only this application can send them. -->
+        <receiver
+            android:name=".widget.WidgetTickReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

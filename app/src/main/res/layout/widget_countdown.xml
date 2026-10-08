@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A RemoteViews Chronometer ticks on its own, so the countdown stays live
+     without the widget being updated every second. The frame lets a widget
+     stretch the countdown's slot and still have it centred within. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <Chronometer
+        android:id="@+id/widget_countdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:countDown="true"
+        android:fontFeatureSettings="tnum"
+        android:maxLines="1"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp" />
+</FrameLayout>

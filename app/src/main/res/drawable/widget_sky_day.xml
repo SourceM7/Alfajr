@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/widget_corner_radius" />
+            <gradient
+                android:angle="270"
+                android:startColor="#FFE3F4E8"
+                android:centerColor="#FFD3EEDC"
+                android:endColor="#FFBFE9CC"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- The horizon glow: Fajr al-sadiq spreads along the horizon first. -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/widget_corner_radius" />
+            <gradient
+                android:centerX="0.5"
+                android:centerY="1.0"
+                android:gradientRadius="100%"
+                android:startColor="#66FFFFFF"
+                android:endColor="#00000000"
+                android:type="radial" />
+        </shape>
+    </item>
+</layer-list>

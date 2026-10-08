@@ -22,6 +22,8 @@ import io.github.sourcem7.alfajralarm.domain.PreviewNextAlarmUseCase
 import io.github.sourcem7.alfajralarm.domain.SearchCitiesUseCase
 import io.github.sourcem7.alfajralarm.ui.AlfajrViewModel
 import io.github.sourcem7.alfajralarm.ui.RingingViewModel
+import io.github.sourcem7.alfajralarm.widget.WidgetRefresher
+import io.github.sourcem7.alfajralarm.widget.WidgetSnapshots
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,6 +81,15 @@ class AppGraph(context: Context) {
         missedNotifier = StatusMissedAlarmNotifier(appContext),
         surface = AndroidRingingSurface(appContext),
     )
+
+    val widgetSnapshots = WidgetSnapshots(
+        preferences = preferencesRepository,
+        alarmState = alarmStateRepository,
+        calculator = calculator,
+        selector = nextOccurrenceSelector,
+    )
+
+    val widgets = WidgetRefresher(appContext, widgetSnapshots)
 
     companion object {
         fun from(context: Context): AppGraph = (context.applicationContext as AlfajrApplication).graph

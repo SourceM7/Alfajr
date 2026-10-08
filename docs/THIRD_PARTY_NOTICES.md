@@ -45,6 +45,11 @@ The Apache License 2.0 does not require an attribution notice in the user
 interface, only that the license and any notices travel with the work, which
 this file satisfies.
 
+The crescent in `ic_crescent.xml`, used by the home-screen and lock-screen
+widgets, is the Material Symbols "bedtime" glyph and is covered above. The
+widget skies (`widget_sky_*.xml`), the star field (`widget_stars.xml`), and the
+ring-widget preview (`widget_preview_ring.xml`) are original to this project.
+
 ### GitHub Octicons
 
 The GitHub mark in `app/src/main/res/drawable/ic_github.xml` is from Primer
@@ -74,7 +79,7 @@ decision.
 | --- | --- |
 | [Adhan (adhan2)](https://github.com/batoulapps/adhan-kotlin) | MIT |
 | Kotlin standard library, `kotlinx.datetime`, `kotlinx.serialization` | Apache 2.0 |
-| AndroidX (Activity, Core, DataStore, Lifecycle, Navigation) | Apache 2.0 |
+| AndroidX (Activity, Core, DataStore, Glance, Lifecycle, Navigation, WorkManager) | Apache 2.0 |
 | Jetpack Compose, Material 3, and Google Material interface icons | Apache 2.0 |
 | GitHub Primer Octicons | MIT |
 | JUnit 4 | Eclipse Public License 1.0 |

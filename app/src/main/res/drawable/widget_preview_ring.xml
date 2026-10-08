@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ring widget for the widget picker, where no bitmap can be drawn: a
+     first-light disc and a part-filled ring. A vector keeps its aspect under
+     fitCenter, so it stays round at whatever size the picker gives it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path android:pathData="M50,0a50,50 0,1 1,0,100a50,50 0,1 1,0,-100z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endColor="#FF2F7A63"
+                android:endX="50"
+                android:endY="100"
+                android:startColor="#FF0A1630"
+                android:startX="50"
+                android:startY="0"
+                android:type="linear" />
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M50,9a41,41 0,1 1,0,82a41,41 0,1 1,0,-82z"
+        android:strokeWidth="4"
+        android:strokeColor="#33FFFFFF" />
+    <path
+        android:pathData="M50,9a41,41 0,0 1,41,41"
+        android:strokeLineCap="round"
+        android:strokeWidth="4"
+        android:strokeColor="#FFA6F3BE" />
+</vector>

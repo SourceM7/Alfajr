@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget picker -->
+    <string name="widget_sky_label">سماء الفجر</string>
+    <string name="widget_sky_description">منبّه الفجر القادم تحت سماء تُشرق كلما اقترب الفجر.</string>
+    <string name="widget_pill_label">الفجر القادم</string>
+    <string name="widget_pill_description">وقت المنبّه في مساحة صغيرة.</string>
+    <string name="widget_ring_label">العدّ التنازلي للفجر</string>
+    <string name="widget_ring_description">حلقة تمتلئ طوال الليل حتى موعد المنبّه.</string>
+    <string name="widget_lock_label">الفجر على شاشة القفل</string>
+    <string name="widget_lock_description">كبيرة وخافتة لشاشة القفل، ولا تُظهر مدينتك.</string>
+
+    <!-- Widget content -->
+    <string name="widget_fajr">الفجر</string>
+    <string name="widget_rings_in">يرنّ بعد</string>
+    <string name="widget_alarm_off">المنبّه متوقف</string>
+    <string name="widget_setup_needed">أكمل إعداد منبّه الفجر</string>
+    <string name="widget_needs_attention">المنبّه يحتاج إلى انتباه</string>
+    <string name="widget_ringing">المنبّه يرنّ</string>
+    <string name="widget_snoozed">مؤجَّل</string>
+
+    <!-- Read aloud by TalkBack as a single fact. -->
+    <string name="widget_a11y_scheduled">منبّه الفجر الساعة ⁦%1$s⁩، %2$s</string>
+    <string name="widget_a11y_snoozed">منبّه الفجر مؤجَّل حتى ⁦%1$s⁩</string>
+    <string name="widget_a11y_preview">%1$s. سيرنّ منبّه الفجر الساعة ⁦%2$s⁩، %3$s</string>
+</resources>
